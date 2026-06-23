@@ -71,14 +71,7 @@ class AuthIntegrationTest {
     void 로그인_성공_후_내_정보를_조회한다() throws Exception {
         signup("login-success@example.com", "Password123!", "login-success");
 
-        MvcResult loginResult = mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "email": "login-success@example.com",
-                                  "password": "Password123!"
-                                }
-                                """))
+        MvcResult loginResult = login("login-success@example.com", "Password123!")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
@@ -99,14 +92,7 @@ class AuthIntegrationTest {
     void 비밀번호가_틀리면_로그인에_실패한다() throws Exception {
         signup("invalid-password@example.com", "Password123!", "invalid-password");
 
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "email": "invalid-password@example.com",
-                                  "password": "WrongPassword123!"
-                                }
-                                """))
+        login("invalid-password@example.com", "WrongPassword123!")
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false));
     }
@@ -114,6 +100,35 @@ class AuthIntegrationTest {
     @Test
     void 토큰이_없으면_보호된_API에_접근할_수_없다() throws Exception {
         mockMvc.perform(get("/members/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void 잘못된_토큰이면_보호된_API에_접근할_수_없다() throws Exception {
+        mockMvc.perform(get("/members/me")
+                        .header("Authorization", "Bearer invalid.token.value"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("유효하지 않은 토큰입니다."));
+    }
+
+    @Test
+    void 로그아웃_후_같은_토큰으로_보호된_API에_접근할_수_없다() throws Exception {
+        signup("logout@example.com", "Password123!", "logout");
+
+        MvcResult loginResult = login("logout@example.com", "Password123!")
+                .andExpect(status().isOk())
+                .andReturn();
+        String accessToken = readAccessToken(loginResult);
+
+        mockMvc.perform(post("/auth/logout")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        mockMvc.perform(get("/members/me")
+                        .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false));
     }
@@ -129,6 +144,17 @@ class AuthIntegrationTest {
                                 }
                                 """.formatted(email, password, nickname)))
                 .andExpect(status().isOk());
+    }
+
+    private org.springframework.test.web.servlet.ResultActions login(String email, String password) throws Exception {
+        return mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "email": "%s",
+                          "password": "%s"
+                        }
+                        """.formatted(email, password)));
     }
 
     private String readAccessToken(MvcResult loginResult) throws Exception {

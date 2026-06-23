@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -33,11 +34,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         String token = extractToken(request);
 
-        if (StringUtils.hasText(token) && !refreshTokenService.isBlacklisted(token)) {
-            authenticate(token);
-        }
+        try {
+            if (StringUtils.hasText(token)) {
+                if (refreshTokenService.isBlacklisted(token)) {
+                    throw new CustomException(ErrorCode.INVALID_TOKEN);
+                }
+                authenticate(token);
+            }
 
-        filterChain.doFilter(request, response);
+            filterChain.doFilter(request, response);
+        } catch (CustomException exception) {
+            SecurityContextHolder.clearContext();
+            writeErrorResponse(response, exception.getErrorCode());
+        }
     }
 
     private void authenticate(String token) {
@@ -63,5 +72,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         return authorizationHeader.substring(7);
+    }
+
+    private void writeErrorResponse(HttpServletResponse response, ErrorCode errorCode) throws IOException {
+        response.setStatus(errorCode.getStatus().value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write("""
+                {"success":false,"message":"%s","data":null}
+                """.formatted(errorCode.getMessage()));
     }
 }
