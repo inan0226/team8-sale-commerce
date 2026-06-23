@@ -1,4 +1,4 @@
-package com.example.team8salecommerce.global.common;
+package com.example.team8salecommerce.global.util;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
