@@ -9,4 +9,8 @@ import java.util.List;
 public class ProductPageResponse {
 
     private List<ProductListResponse> content;
+    private int page;
+    private int size;
+    private int totalPages;
+    private long totalElements;
 }
