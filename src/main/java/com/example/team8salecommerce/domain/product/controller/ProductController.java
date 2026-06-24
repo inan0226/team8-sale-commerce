@@ -50,7 +50,9 @@ public class ProductController {
 
     @GetMapping("/{productId}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> getProductDetail(
-            @PathVariable Long productId
+            @PathVariable
+            @Min(value = 1, message = "상품 ID는 1 이상이어야 합니다.")
+            Long productId
     ) {
 
         ProductDetailResponse response =

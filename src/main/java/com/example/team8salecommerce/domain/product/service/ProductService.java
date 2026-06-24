@@ -64,21 +64,15 @@ public class ProductService {
         Product product = productRepository.findByIdWithCategory(productId)
                 .orElseThrow(() -> new ProductException(ErrorCode.PRODUCT_NOT_FOUND));
 
-        String description =
-                product.getDescription() != null ? product.getDescription() : "상품 설명 없음";
-
-        Integer viewCount =
-                product.getViewCount() != null ? product.getViewCount() : 0;
-
         return new ProductDetailResponse(
                 product.getId(),
                 product.getName(),
                 product.getBrand(),
-                description,
+                product.getDescription(),
                 product.getPrice(),
                 product.getStock(),
-                product.getCategory() != null ? product.getCategory().getName() : "UNKNOWN",
-                viewCount
+                product.getCategory().getName(),
+                product.getViewCount()
         );
     }
 }
