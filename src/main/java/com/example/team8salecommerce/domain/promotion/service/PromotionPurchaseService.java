@@ -15,6 +15,8 @@ import com.example.team8salecommerce.domain.promotion.entity.PromotionProduct;
 import com.example.team8salecommerce.domain.promotion.repository.PromotionOrderItemRepository;
 import com.example.team8salecommerce.domain.promotion.repository.PromotionOrderRepository;
 import com.example.team8salecommerce.domain.promotion.repository.PromotionProductRepository;
+import com.example.team8salecommerce.domain.stock.entity.StockHistory;
+import com.example.team8salecommerce.domain.stock.repository.StockHistoryRepository;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
 
@@ -43,6 +45,14 @@ public class PromotionPurchaseService {
 	private final PromotionOrderItemRepository promotionOrderItemRepository;
 
 	/**
+	 * 재고 변경 이력을 저장하는 Repository
+	 *
+	 * 선착순 구매로 이벤트 재고가 차감될 때
+	 * 변경 전/후 재고를 StockHistory에 기록한다.
+	 */
+	private final StockHistoryRepository stockHistoryRepository;
+
+	/**
 	 * 선착순 구매를 트랜잭션 안에서 처리한다.
 	 *
 	 * 이 메서드는 Facade에서 Redis Lock을 획득한 뒤 호출된다.
@@ -66,7 +76,14 @@ public class PromotionPurchaseService {
 
 		promotionProduct.validatePurchasable(now, request.quantity());
 
+		// 재고 차감 전 남은 이벤트 재고를 저장한다.
+		// StockHistory에 "몇 개에서 몇 개로 줄었는지" 기록하기 위해 필요하다.
+		Integer stockBefore = promotionProduct.getRemainingEventStock();
+
 		promotionProduct.decreaseStock(request.quantity());
+
+		// 재고 차감 후 남은 이벤트 재고를 저장한다.
+		Integer stockAfter = promotionProduct.getRemainingEventStock();
 
 		Long totalAmount = calculateTotalAmount(
 			promotionProduct.getPromotionPrice(),
@@ -85,6 +102,15 @@ public class PromotionPurchaseService {
 			promotionProduct,
 			product,
 			request.quantity()
+		);
+
+		createStockDecreaseHistory(
+			product.getId(),
+			promotionProduct.getId(),
+			promotionOrder.getId(),
+			request.quantity(),
+			stockBefore,
+			stockAfter
 		);
 
 		return PromotionPurchaseResponse.of(
@@ -175,6 +201,32 @@ public class PromotionPurchaseService {
 		);
 
 		promotionOrderItemRepository.save(promotionOrderItem);
+	}
+
+	/**
+	 * 선착순 구매로 차감된 이벤트 재고 이력을 저장한다.
+	 *
+	 * StockHistory에는 어떤 상품/특가상품/주문에서
+	 * 몇 개의 재고가 몇 개에서 몇 개로 변경되었는지 기록한다.
+	 */
+	private void createStockDecreaseHistory(
+		Long productId,
+		Long promotionProductId,
+		Long promotionOrderId,
+		Integer quantity,
+		Integer stockBefore,
+		Integer stockAfter
+	) {
+		StockHistory stockHistory = StockHistory.createDecreaseHistory(
+			productId,
+			promotionProductId,
+			promotionOrderId,
+			quantity,
+			stockBefore,
+			stockAfter
+		);
+
+		stockHistoryRepository.save(stockHistory);
 	}
 
 	/**
