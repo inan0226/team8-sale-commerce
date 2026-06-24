@@ -175,6 +175,9 @@ public class StockHistory {
 
 		validateRequiredIds(productId, promotionProductId, orderId);
 
+		// 결제 실패 복구 이력은 어떤 결제 때문에 복구됐는지 추적해야 하므로 paymentId가 필수이다.
+		validatePaymentId(paymentId);
+
 		validateStockChange(
 			StockChangeType.RESTORE,
 			quantity,
@@ -215,6 +218,9 @@ public class StockHistory {
 
 		validateRequiredIds(productId, promotionProductId, orderId);
 
+		// 환불 복구 이력은 어떤 결제/환불 때문에 복구됐는지 추적해야 하므로 둘 다 필수이다.
+		validateRefundIds(paymentId, refundId);
+
 		validateStockChange(
 			StockChangeType.RESTORE,
 			quantity,
@@ -245,6 +251,31 @@ public class StockHistory {
 	 */
 	private static void validateRequiredIds(Long productId, Long promotionProductId, Long orderId) {
 		if (productId == null || promotionProductId == null || orderId == null) {
+			throw new CustomException(ErrorCode.INVALID_REQUEST);
+		}
+	}
+
+	/**
+	 * 결제 실패 복구 이력 생성 시 결제 ID를 검증한다.
+	 *
+	 * 결제 실패로 재고가 복구되는 경우,
+	 * 어떤 결제 때문에 복구됐는지 추적해야 하므로 paymentId는 필수이다.
+	 */
+	private static void validatePaymentId(Long paymentId) {
+		if (paymentId == null) {
+			throw new CustomException(ErrorCode.INVALID_REQUEST);
+		}
+	}
+
+	/**
+	 * 환불 복구 이력 생성 시 결제 ID와 환불 ID를 검증한다.
+	 *
+	 * 환불 완료로 재고가 복구되는 경우,
+	 * 어떤 결제와 어떤 환불 때문에 복구됐는지 추적해야 하므로
+	 * paymentId와 refundId는 필수이다.
+	 */
+	private static void validateRefundIds(Long paymentId, Long refundId) {
+		if (paymentId == null || refundId == null) {
 			throw new CustomException(ErrorCode.INVALID_REQUEST);
 		}
 	}

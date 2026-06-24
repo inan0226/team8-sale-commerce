@@ -124,6 +124,53 @@ class StockHistoryTest {
         assertThat(stockHistory.getStockAfter()).isEqualTo(stockAfter);
     }
 
+	@Test
+	@DisplayName("결제 실패 복구 이력 생성 시 paymentId가 null이면 실패한다")
+	void createPaymentFailRestoreHistory_paymentId_null이면_실패() {
+		// when & then
+		assertThatThrownBy(() -> StockHistory.createPaymentFailRestoreHistory(
+			1L,
+			10L,
+			100L,
+			null,
+			2,
+			8,
+			10
+		)).isInstanceOf(CustomException.class);
+	}
+
+	@Test
+	@DisplayName("환불 복구 이력 생성 시 paymentId가 null이면 실패한다")
+	void createRefundRestoreHistory_paymentId_null이면_실패() {
+		// when & then
+		assertThatThrownBy(() -> StockHistory.createRefundRestoreHistory(
+			1L,
+			10L,
+			100L,
+			null,
+			2000L,
+			2,
+			8,
+			10
+		)).isInstanceOf(CustomException.class);
+	}
+
+	@Test
+	@DisplayName("환불 복구 이력 생성 시 refundId가 null이면 실패한다")
+	void createRefundRestoreHistory_refundId_null이면_실패() {
+		// when & then
+		assertThatThrownBy(() -> StockHistory.createRefundRestoreHistory(
+			1L,
+			10L,
+			100L,
+			1000L,
+			null,
+			2,
+			8,
+			10
+		)).isInstanceOf(CustomException.class);
+	}
+
     @Test
     @DisplayName("재고 변경 수량이 0 이하이면 이력 생성에 실패한다")
     void createHistoryFailWhenQuantityIsZeroOrNegative() {
