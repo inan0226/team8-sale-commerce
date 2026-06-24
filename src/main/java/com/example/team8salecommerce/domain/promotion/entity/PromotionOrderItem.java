@@ -1,9 +1,5 @@
 package com.example.team8salecommerce.domain.promotion.entity;
 
-import java.math.BigDecimal;
-
-import org.springframework.data.domain.Auditable;
-
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
 import com.example.team8salecommerce.global.util.BaseEntity;
@@ -34,18 +30,33 @@ public class PromotionOrderItem extends BaseEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	/**
+	 * 특가 주문 ID
+	 */
 	@Column(nullable = false)
 	private Long promotionOrderId;
 
+	/**
+	 * 특가 상품 ID
+	 */
 	@Column(nullable = false)
 	private Long promotionProductId;
 
+	/**
+	 * 원본 상품 ID
+	 */
 	@Column(nullable = false)
 	private Long productId;
 
+	/**
+	 * 주문 시점의 상품명
+	 */
 	@Column(nullable = false)
 	private String productName;
 
+	/**
+	 * 구매 수량
+	 */
 	@Column(nullable = false)
 	private Integer quantity;
 
@@ -55,6 +66,11 @@ public class PromotionOrderItem extends BaseEntity {
 	@Column(nullable = false)
 	private Long unitPrice;
 
+	/**
+	 * 총 주문 금액
+	 *
+	 * unitPrice * quantity
+	 */
 	@Column(nullable = false)
 	private Long totalPrice;
 
@@ -74,7 +90,7 @@ public class PromotionOrderItem extends BaseEntity {
 		this.productName = productName;
 		this.quantity = quantity;
 		this.unitPrice = unitPrice;
-		this.totalPrice = unitPrice * quantity;
+		this.totalPrice = calculateTotalPrice(unitPrice, quantity);
 	}
 
 	/**
@@ -100,6 +116,9 @@ public class PromotionOrderItem extends BaseEntity {
 		);
 	}
 
+	/**
+	 * 주문 상품 생성 시 필수값을 검증한다.
+	 */
 	private void validateCreate(
 		Long promotionOrderId,
 		Long promotionProductId,
@@ -110,17 +129,28 @@ public class PromotionOrderItem extends BaseEntity {
 	) {
 		if (
 			promotionOrderId == null
-			|| promotionProductId == null
-			|| productId == null
-			|| productName == null
-			|| quantity == null
-			|| unitPrice == null
+				|| promotionProductId == null
+				|| productId == null
+				|| productName == null
+				|| quantity == null
+				|| unitPrice == null
 		) {
 			throw new CustomException(ErrorCode.INVALID_REQUEST);
 		}
 
-		if (productName.isBlank() || quantity <= 0 || unitPrice <= 0) {
+		if (quantity <= 0) {
+			throw new CustomException(ErrorCode.INVALID_QUANTITY);
+		}
+
+		if (productName.isBlank() || unitPrice <= 0) {
 			throw new CustomException(ErrorCode.INVALID_REQUEST);
 		}
+	}
+
+	/**
+	 * 총 주문 금액을 계산한다.
+	 */
+	private Long calculateTotalPrice(Long unitPrice, Integer quantity) {
+		return unitPrice * quantity;
 	}
 }

@@ -20,8 +20,8 @@ import lombok.NoArgsConstructor;
 /**
  * 특가 상품 엔티티
  *
- * 일반 상품 중에서 선착순 이벤트로 판매되는 상품 정보를 관리한다.
- * 선착순 이벤트에서는 일반 상품 재고가 아니라 remainingEventStock을 차감한다.
+ * 선착순 이벤트에서 판매되는 상품 정보를 관리한다.
+ * 이벤트 재고는 Redis Lock으로 보호하면서 차감/복구한다.
  */
 @Getter
 @Entity
@@ -70,6 +70,8 @@ public class PromotionProduct {
 		LocalDateTime startTime,
 		LocalDateTime endTime
 	) {
+		validateCreate(productId, title, promotionPrice, discountRate, totalEventStock, startTime, endTime);
+
 		this.productId = productId;
 		this.title = title;
 		this.promotionPrice = promotionPrice;
@@ -126,10 +128,14 @@ public class PromotionProduct {
 	 * 선착순 구매 요청 시 재고 차감 전에 호출한다.
 	 * 이벤트가 진행 중인지, 재고가 충분한지 확인한다.
 	 */
-	public void validatePurchaseable(LocalDateTime now, Integer quantity) {
+	public void validatePurchasable(LocalDateTime now, Integer quantity) {
 		validateQuantity(quantity);
 
-		if (!isOpen(now)) {
+		if (!isOpen()) {
+			throw new CustomException(ErrorCode.PROMOTION_NOT_OPEN);
+		}
+
+		if (!isWithinEventTime(now)) {
 			throw new CustomException(ErrorCode.PROMOTION_NOT_OPEN);
 		}
 
@@ -138,6 +144,11 @@ public class PromotionProduct {
 		}
 	}
 
+	/**
+	 * 이벤트 재고를 차감한다.
+	 *
+	 * 재고가 0이 되면 SOLD_OUT 상태로 변경한다.
+	 */
 	public void decreaseStock(Integer quantity) {
 		validateQuantity(quantity);
 
@@ -161,27 +172,33 @@ public class PromotionProduct {
 	public void restoreStock(Integer quantity, LocalDateTime now) {
 		validateQuantity(quantity);
 
-		int restoredStock = this.remainingEventStock +  quantity;
+		int restoredStock = this.remainingEventStock + quantity;
 
-		// 복구 후 재고가 최초 재고를 초과히지 않도록 막는다.
-		this.remainingEventStock = Math.min(restoredStock, this.remainingEventStock);
-
-		// 품절 상태였지만 재고가 복구되고 이벤트 시간이 아직 유효하면 다시 구매 가능 상태로 변경한다.
-		if (this.status == PromotionProductStatus.SOLD_OUT && isWithinEventTime(now)) {
-			this.status = PromotionProductStatus.OPEN;
+		if (restoredStock > totalEventStock) {
+			throw new CustomException(ErrorCode.INVALID_REQUEST);
 		}
+
+		// 복구 후 재고가 최초 재고를 초과하지 않도록 막는다.
+		this.remainingEventStock = restoredStock;
+
+		// 이벤트 시간이 아직 유효하면 다시 구매 가능 상태로 변경한다.
+		if (isWithinEventTime(now)) {
+			this.status = PromotionProductStatus.OPEN;
+			return;
+		}
+
+		// 이벤트 시간이 끝났다면 재고가 복구되어도 종료 상태로 둔다.
+		this.status = PromotionProductStatus.CLOSED;
 	}
 
 	/**
-	 * 현재 특가 상품이 구매 가능한 상태인지 확인한다.
+	 * 현재 특가 상품 상태가 OPEN인지 확인한다.
 	 *
-	 * 상태가 OPEN이어야 하고,
-	 * 현재 시간이 이벤트 시작 시간과 종료 시간 사이여야 한다.
+	 * 시간 검증은 isWithinEventTime()에서 따로 처리한다.
 	 */
-	private boolean isOpen(LocalDateTime now) {
-		return this.status == PromotionProductStatus.OPEN && isWithinEventTime(now);
+	private boolean isOpen() {
+		return this.status == PromotionProductStatus.OPEN;
 	}
-
 
 	/**
 	 * 현재 시간이 이벤트 진행 시간 안에 있는지 확인한다.
@@ -189,6 +206,10 @@ public class PromotionProduct {
 	 * startTime <= now < endTime 기준이다.
 	 */
 	private boolean isWithinEventTime(LocalDateTime now) {
+		if (now == null) {
+			throw new CustomException(ErrorCode.INVALID_REQUEST);
+		}
+
 		return !now.isBefore(this.startTime) && now.isBefore(this.endTime);
 	}
 
@@ -199,6 +220,41 @@ public class PromotionProduct {
 	 */
 	private void validateQuantity(Integer quantity) {
 		if (quantity == null || quantity <= 0) {
+			throw new CustomException(ErrorCode.INVALID_QUANTITY);
+		}
+	}
+
+	/**
+	 * 특가 상품 생성 시 필수값을 검증한다.
+	 */
+	private void validateCreate(
+		Long productId,
+		String title,
+		Long promotionPrice,
+		Integer discountRate,
+		Integer totalEventStock,
+		LocalDateTime startTime,
+		LocalDateTime endTime
+	) {
+		if (
+			productId == null
+				|| title == null
+				|| promotionPrice == null
+				|| discountRate == null
+				|| totalEventStock == null
+				|| startTime == null
+				|| endTime == null
+		) {
+			throw new CustomException(ErrorCode.INVALID_REQUEST);
+		}
+
+		if (
+			title.isBlank()
+				|| promotionPrice <= 0
+				|| discountRate < 0
+				|| totalEventStock <= 0
+				|| !startTime.isBefore(endTime)
+		) {
 			throw new CustomException(ErrorCode.INVALID_REQUEST);
 		}
 	}

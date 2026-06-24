@@ -34,28 +34,55 @@ public class PromotionOrder extends BaseEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	/**
+	 * 주문한 회원 ID
+	 */
 	@Column(nullable = false)
 	private Long memberId;
 
+	/**
+	 * 구매한 특가 상품 ID
+	 */
 	@Column(nullable = false)
 	private Long promotionProductId;
 
+	/**
+	 * 주문 총 금액
+	 */
 	@Column(nullable = false)
 	private Long totalAmount;
 
+	/**
+	 * 특가 주문 상태
+	 */
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private PromotionOrderStatus status;
 
+	/**
+	 * 주문 생성 시간
+	 */
 	@Column(nullable = false)
 	private LocalDateTime orderedAt;
 
+	/**
+	 * 결제 완료 시간
+	 */
 	private LocalDateTime paidAt;
 
+	/**
+	 * 결제 실패 시간
+	 */
 	private LocalDateTime paymentFailedAt;
 
+	/**
+	 * 환불 요청 시간
+	 */
 	private LocalDateTime refundRequestedAt;
 
+	/**
+	 * 환불 완료 시간
+	 */
 	private LocalDateTime refundedAt;
 
 	private PromotionOrder(
@@ -94,7 +121,7 @@ public class PromotionOrder extends BaseEntity {
 	 */
 	public void markAsPaid(LocalDateTime paidAt) {
 		if (!isWaiting()) {
-			throw new CustomException(ErrorCode.INVALID_REQUEST);
+			throw new CustomException(ErrorCode.INVALID_PROMOTION_ORDER_STATUS);
 		}
 
 		if (paidAt == null) {
@@ -112,7 +139,7 @@ public class PromotionOrder extends BaseEntity {
 	 */
 	public void failPayment(LocalDateTime paymentFailedAt) {
 		if (!isWaiting()) {
-			throw new CustomException(ErrorCode.INVALID_REQUEST);
+			throw new CustomException(ErrorCode.INVALID_PROMOTION_ORDER_STATUS);
 		}
 
 		if (paymentFailedAt == null) {
@@ -130,7 +157,7 @@ public class PromotionOrder extends BaseEntity {
 	 */
 	public void requestRefund(LocalDateTime refundRequestedAt) {
 		if (!isPaid()) {
-			throw new CustomException(ErrorCode.INVALID_REQUEST);
+			throw new CustomException(ErrorCode.REFUND_NOT_ALLOWED);
 		}
 
 		if (refundRequestedAt == null) {
@@ -148,7 +175,7 @@ public class PromotionOrder extends BaseEntity {
 	 */
 	public void completeRefund(LocalDateTime refundedAt) {
 		if (!isRefundRequested()) {
-			throw new CustomException(ErrorCode.INVALID_REQUEST);
+			throw new CustomException(ErrorCode.INVALID_PROMOTION_ORDER_STATUS);
 		}
 
 		if (refundedAt == null) {
@@ -163,7 +190,7 @@ public class PromotionOrder extends BaseEntity {
 	 * 결제 대기 상태인지 확인한다.
 	 */
 	public boolean isWaiting() {
-		return status ==  PromotionOrderStatus.WAITING;
+		return status == PromotionOrderStatus.WAITING;
 	}
 
 	/**
