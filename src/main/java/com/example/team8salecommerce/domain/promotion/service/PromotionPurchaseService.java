@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.team8salecommerce.domain.product.entity.Product;
+import com.example.team8salecommerce.domain.product.repository.ProductRepository;
 import com.example.team8salecommerce.domain.promotion.dto.PromotionPurchaseRequest;
 import com.example.team8salecommerce.domain.promotion.dto.PromotionPurchaseResponse;
 import com.example.team8salecommerce.domain.promotion.entity.PromotionOrder;
@@ -35,6 +37,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PromotionPurchaseService {
 
+	private final ProductRepository productRepository;
 	private final PromotionProductRepository promotionProductRepository;
 	private final PromotionOrderRepository promotionOrderRepository;
 	private final PromotionOrderItemRepository promotionOrderItemRepository;
@@ -57,7 +60,12 @@ public class PromotionPurchaseService {
 
 		PromotionProduct promotionProduct = findPromotionProduct(promotionProductId);
 
+		// 특가 상품이 연결하고 있는 실제 상품을 조회한다.
+		// findByIdWithCategory()는 isDeleted = false 조건이 포함되어 있어 삭제 상품은 조회되지 않는다.
+		Product product = findProduct(promotionProduct.getProductId());
+
 		promotionProduct.validatePurchasable(now, request.quantity());
+
 		promotionProduct.decreaseStock(request.quantity());
 
 		Long totalAmount = calculateTotalAmount(
@@ -75,6 +83,7 @@ public class PromotionPurchaseService {
 		createPromotionOrderItem(
 			promotionOrder.getId(),
 			promotionProduct,
+			product,
 			request.quantity()
 		);
 
@@ -112,6 +121,20 @@ public class PromotionPurchaseService {
 	}
 
 	/**
+	 * 특가 상품과 연결된 실제 상품을 조회한다.
+	 *
+	 * ProductRepository.findByIdWithCategory()는 삭제되지 않은 상품만 조회한다.
+	 */
+	private Product findProduct(Long productId) {
+		if (productId == null) {
+			throw new CustomException(ErrorCode.INVALID_REQUEST);
+		}
+
+		return productRepository.findByIdWithCategory(productId)
+			.orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
+	}
+
+	/**
 	 * 특가 주문을 생성하고 저장한다.
 	 */
 	private PromotionOrder createPromotionOrder(
@@ -133,18 +156,20 @@ public class PromotionPurchaseService {
 	/**
 	 * 특가 주문 상품을 생성하고 저장한다.
 	 *
-	 * 상품명과 가격은 주문 시점 기준으로 저장한다.
+	 * 상품명은 Product에서 가져오고,
+	 * 가격은 특가 주문 시점의 promotionPrice를 저장한다.
 	 */
 	private void createPromotionOrderItem(
 		Long promotionOrderId,
 		PromotionProduct promotionProduct,
+		Product product,
 		Integer quantity
 	) {
 		PromotionOrderItem promotionOrderItem = PromotionOrderItem.create(
 			promotionOrderId,
 			promotionProduct.getId(),
-			promotionProduct.getProductId(),
-			promotionProduct.getTitle(),
+			product.getId(),
+			product.getName(),
 			quantity,
 			promotionProduct.getPromotionPrice()
 		);
