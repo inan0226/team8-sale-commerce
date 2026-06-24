@@ -61,18 +61,13 @@ public class ProductService {
     @Transactional(readOnly = true)
     public ProductDetailResponse getProductDetail(Long productId) {
 
+        log.info("상품 상세 조회 시작 productId={}", productId);
+
         Product product = productRepository.findByIdWithCategory(productId)
                 .orElseThrow(() -> new ProductException(ErrorCode.PRODUCT_NOT_FOUND));
 
-        return new ProductDetailResponse(
-                product.getId(),
-                product.getName(),
-                product.getBrand(),
-                product.getDescription(),
-                product.getPrice(),
-                product.getStock(),
-                product.getCategory().getName(),
-                product.getViewCount()
-        );
+        log.info("상품 상세 조회 완료 productId={}", productId);
+
+        return ProductDetailResponse.from(product);
     }
 }
