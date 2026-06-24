@@ -16,6 +16,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     where p.id = :id
       and p.isDeleted = false
 """)
+
+
     Optional<Product> findByIdWithCategory(Long id);
     Page<Product> findByIsDeletedFalse(Pageable pageable);
+
+
 }

@@ -39,4 +39,26 @@ public class Product extends BaseEntity{
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
+
+    public Product(
+            String name,
+            String brand,
+            Long price,
+            Integer stock,
+            String imageUrl,
+            String description,
+            Boolean isDeleted,
+            Integer viewCount,
+            Category category
+    ) {
+        this.name = name;
+        this.brand = brand;
+        this.price = price;
+        this.stock = stock;
+        this.imageUrl = imageUrl;
+        this.description = description;
+        this.isDeleted = isDeleted;
+        this.viewCount = viewCount;
+        this.category = category;
+    }
 }
