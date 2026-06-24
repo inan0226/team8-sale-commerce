@@ -31,7 +31,7 @@ public class Product extends BaseEntity{
     private String description = "상품 설명 없음";
 
     @Column(nullable = false)
-    private Boolean isDeleted = false;
+    private boolean isDeleted = false;
 
     @Column(nullable = false)
     private Integer viewCount = 0;
