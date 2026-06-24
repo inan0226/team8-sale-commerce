@@ -1,16 +1,12 @@
 package com.example.team8salecommerce.domain.product.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import java.util.List;
 
-@Getter
-@AllArgsConstructor
-public class ProductPageResponse {
-
-    private List<ProductListResponse> content;
-    private int page;
-    private int size;
-    private int totalPages;
-    private long totalElements;
+public record ProductPageResponse(
+        List<ProductListResponse> content,
+        int page,
+        int size,
+        int totalPages,
+        long totalElements
+) {
 }

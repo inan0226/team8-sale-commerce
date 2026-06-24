@@ -8,6 +8,10 @@ public enum ProductSortType {
     NAME_DESC;
 
     public static ProductSortType from(String value) {
-        return ProductSortType.valueOf(value.toUpperCase());
+        try {
+            return ProductSortType.valueOf(value.toUpperCase());
+        } catch (Exception e) {
+            return LATEST;
+        }
     }
 }

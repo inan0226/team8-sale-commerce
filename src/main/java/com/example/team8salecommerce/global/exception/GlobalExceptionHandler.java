@@ -34,6 +34,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception exception) {
+
+        System.err.println("===== 서버 에러 =====");
+        exception.printStackTrace();
+
         return ResponseEntity
                 .internalServerError()
                 .body(ApiResponse.fail("서버 내부 오류가 발생했습니다."));

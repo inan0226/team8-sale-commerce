@@ -1,19 +1,15 @@
 package com.example.team8salecommerce.domain.product.dto;
 
 import com.example.team8salecommerce.domain.product.entity.Product;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
-@Getter
-@AllArgsConstructor
-public class ProductListResponse {
-
-    private Long id;
-    private String name;
-    private String brand;
-    private Long price;
-    private Integer stock;
-    private String imageUrl;
+public record ProductListResponse(
+        Long id,
+        String name,
+        String brand,
+        Long price,
+        Integer stock,
+        String imageUrl
+) {
 
     public static ProductListResponse from(Product product) {
         return new ProductListResponse(
