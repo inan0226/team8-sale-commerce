@@ -147,6 +147,38 @@ class StockHistoryTest {
         )).isInstanceOf(CustomException.class);
     }
 
+	@Test
+	@DisplayName("필수 ID 값이 null이면 이력 생성에 실패한다")
+	void createHistoryFailWhenRequiredIdIsNull() {
+		// when & then
+		assertThatThrownBy(() -> StockHistory.createDecreaseHistory(
+			null,
+			10L,
+			100L,
+			1,
+			10,
+			9
+		)).isInstanceOf(CustomException.class);
+
+		assertThatThrownBy(() -> StockHistory.createDecreaseHistory(
+			1L,
+			null,
+			100L,
+			1,
+			10,
+			9
+		)).isInstanceOf(CustomException.class);
+
+		assertThatThrownBy(() -> StockHistory.createDecreaseHistory(
+			1L,
+			10L,
+			null,
+			1,
+			10,
+			9
+		)).isInstanceOf(CustomException.class);
+	}
+
     @Test
     @DisplayName("변경 전/후 재고가 음수이면 이력 생성에 실패한다")
     void createHistoryFailWhenStockBeforeOrStockAfterIsNegative() {

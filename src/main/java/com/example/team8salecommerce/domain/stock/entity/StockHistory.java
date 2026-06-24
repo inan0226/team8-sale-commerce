@@ -134,6 +134,7 @@ public class StockHistory {
 		Integer stockBefore,
 		Integer stockAfter
 	) {
+		validateRequiredIds(productId, promotionProductId, orderId);
 
 		validateStockChange(
 			StockChangeType.DECREASE,
@@ -171,6 +172,8 @@ public class StockHistory {
 		Integer stockBefore,
 		Integer stockAfter
 	) {
+
+		validateRequiredIds(productId, promotionProductId, orderId);
 
 		validateStockChange(
 			StockChangeType.RESTORE,
@@ -210,6 +213,8 @@ public class StockHistory {
 		Integer stockAfter
 	) {
 
+		validateRequiredIds(productId, promotionProductId, orderId);
+
 		validateStockChange(
 			StockChangeType.RESTORE,
 			quantity,
@@ -229,6 +234,19 @@ public class StockHistory {
 			stockAfter,
 			StockChangeReason.REFUND_COMPLETED
 		);
+	}
+
+	/**
+	 * 재고 이력 추적에 필요한 필수 ID 값을 검증한다.
+	 *
+	 * productId, promotionProductId, orderId는
+	 * 재고 이력을 어떤 상품/특가상품/주문과 연결할지 판단하는 핵심 값이므로
+	 * 객체 생성 시점에 null 값을 막는다.
+	 */
+	private static void validateRequiredIds(Long productId, Long promotionProductId, Long orderId) {
+		if (productId == null || promotionProductId == null || orderId == null) {
+			throw new CustomException(ErrorCode.INVALID_REQUEST);
+		}
 	}
 
 	/**
