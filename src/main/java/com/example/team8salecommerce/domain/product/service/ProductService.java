@@ -14,8 +14,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductService {
@@ -33,14 +35,14 @@ public class ProductService {
             default -> org.springframework.data.domain.Sort.by("createdAt").descending();
         };
 
-        Pageable pageable = PageRequest.of(page, size, sortOption);
+        log.info("상품 목록 조회 시작");
 
-        System.out.println("Pageable 생성 완료");
+        Pageable pageable = PageRequest.of(page, size, sortOption);
 
         Page<Product> productPage =
                 productRepository.findByIsDeletedFalse(pageable);
 
-        System.out.println("상품 조회 완료");
+        log.info("상품 목록 조회 완료");
 
         List<ProductListResponse> content = productPage
                 .map(ProductListResponse::from)
@@ -54,6 +56,7 @@ public class ProductService {
                 productPage.getTotalElements()
         );
     }
+
 
     @Transactional(readOnly = true)
     public ProductDetailResponse getProductDetail(Long productId) {
