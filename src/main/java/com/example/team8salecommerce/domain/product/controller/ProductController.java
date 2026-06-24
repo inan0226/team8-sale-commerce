@@ -2,7 +2,6 @@ package com.example.team8salecommerce.domain.product.controller;
 
 import com.example.team8salecommerce.domain.product.dto.ProductDetailResponse;
 import com.example.team8salecommerce.domain.product.dto.ProductPageResponse;
-import com.example.team8salecommerce.domain.product.enumtype.ProductSortType;
 import com.example.team8salecommerce.domain.product.service.ProductService;
 import com.example.team8salecommerce.global.response.ApiResponse;
 import jakarta.validation.constraints.Max;
@@ -34,14 +33,11 @@ public class ProductController {
             @RequestParam(defaultValue = "20")
             @Min(1)
             @Max(100)
-            int size,
-
-            @RequestParam(defaultValue = "LATEST")
-            ProductSortType sort
+            int size
     ) {
 
         ProductPageResponse response =
-                productService.getProducts(page, size, sort);
+                productService.getProducts(page, size);
 
         return ResponseEntity.ok(
                 ApiResponse.success("상품 목록 조회 성공", response)

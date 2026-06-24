@@ -1,6 +1,5 @@
 package com.example.team8salecommerce.domain.product.service;
 
-import com.example.team8salecommerce.domain.product.enumtype.ProductSortType;
 import com.example.team8salecommerce.domain.product.dto.ProductListResponse;
 import com.example.team8salecommerce.domain.product.dto.ProductPageResponse;
 import com.example.team8salecommerce.domain.product.repository.ProductRepository;
@@ -25,15 +24,12 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     @Transactional(readOnly = true)
-    public ProductPageResponse getProducts(int page, int size, ProductSortType sort) {
+    public ProductPageResponse getProducts(int page, int size) {
 
-        var sortOption = switch (sort) {
-            case PRICE_ASC -> org.springframework.data.domain.Sort.by("price").ascending();
-            case PRICE_DESC -> org.springframework.data.domain.Sort.by("price").descending();
-            case NAME_ASC -> org.springframework.data.domain.Sort.by("name").ascending();
-            case NAME_DESC -> org.springframework.data.domain.Sort.by("name").descending();
-            default -> org.springframework.data.domain.Sort.by("createdAt").descending();
-        };
+        var sortOption =
+                org.springframework.data.domain.Sort
+                        .by("createdAt")
+                        .descending();
 
         log.info("상품 목록 조회 시작");
 
@@ -44,9 +40,9 @@ public class ProductService {
 
         log.info("상품 목록 조회 완료");
 
-        List<ProductListResponse> content = productPage
-                .map(ProductListResponse::from)
-                .getContent();
+        List<ProductListResponse> content =
+                productPage.map(ProductListResponse::from)
+                        .getContent();
 
         return new ProductPageResponse(
                 content,
@@ -57,16 +53,11 @@ public class ProductService {
         );
     }
 
-
     @Transactional(readOnly = true)
     public ProductDetailResponse getProductDetail(Long productId) {
 
-        log.info("상품 상세 조회 시작 productId={}", productId);
-
         Product product = productRepository.findByIdWithCategory(productId)
                 .orElseThrow(() -> new ProductException(ErrorCode.PRODUCT_NOT_FOUND));
-
-        log.info("상품 상세 조회 완료 productId={}", productId);
 
         return ProductDetailResponse.from(product);
     }

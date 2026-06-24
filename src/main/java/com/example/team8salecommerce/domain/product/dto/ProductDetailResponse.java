@@ -18,11 +18,11 @@ public record ProductDetailResponse(
                 product.getId(),
                 product.getName(),
                 product.getBrand(),
-                product.getDescription(),
+                product.getDescription() != null ? product.getDescription() : "상품 설명 없음",
                 product.getPrice(),
                 product.getStock(),
-                product.getCategory().getName(),
-                product.getViewCount()
+                product.getCategory() != null ? product.getCategory().getName() : "카테고리 없음",
+                product.getViewCount() != null ? product.getViewCount() : 0
         );
     }
 }
