@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -90,19 +91,24 @@ public class CartService {
     // 회원의 장바구니를 조회한 후 장바구니에 담긴 상품 목록과 총 금액을 계산하여 반환
     @Transactional(readOnly = true)
     public CartResponse getCart(Long memberId) {
+        // 조회 api이므로 다른 insert를 발생시키는건 X
+        Optional<Cart> optionalCart =
+                cartRepository.findByMemberId(memberId);
+        if (optionalCart.isEmpty()) {
+            return new CartResponse(
+                    null,
+                    List.of(),
+                    0L
+            );
+        }
+        Cart cart = optionalCart.get();
 
-        // 회원 장바구니 조회
-        Cart cart = cartRepository.findByMemberId(memberId)
-                .orElseThrow(() ->
-                        new CustomException(
-                                ErrorCode.CART_NOT_FOUND));
-        // 장바구니 상품 목록 조회
         List<CartItemDetailResponse> items =
-                cartItemRepository.findByCartId(
-                                cart.getId())
+                cartItemRepository.findByCartId(cart.getId())
                         .stream()
                         .map(CartItemDetailResponse::from)
                         .toList();
+
        // 장바구니 총 금액 계산
         Long totalPrice = items.stream()
                 .mapToLong(CartItemDetailResponse::totalPrice)
