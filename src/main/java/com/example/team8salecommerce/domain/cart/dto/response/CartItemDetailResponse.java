@@ -7,14 +7,14 @@ public record CartItemDetailResponse(
         Long cartItemId,
         Long productId,
         String productName,
-        int price,
+        Long price,
         int quantity,
-        int totalPrice
+        Long totalPrice
 ) {
     public static CartItemDetailResponse from(
             CartItem cartItem
     ) {
-        int totalPrice =
+        Long totalPrice =
                 cartItem.getProduct().getPrice()
                         * cartItem.getQuantity();
 

@@ -30,7 +30,10 @@ public class Cart extends BaseEntity {
     private Member member;
 
     // 장바구니 생성
-    public Cart(Member member) {
+    protected Cart(Member member) {
         this.member = member;
+    }
+    public static Cart create(Member member) {
+        return new Cart(member);
     }
 }

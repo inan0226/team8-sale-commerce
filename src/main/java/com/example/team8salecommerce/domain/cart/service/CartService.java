@@ -8,6 +8,8 @@ import com.example.team8salecommerce.domain.cart.entity.Cart;
 import com.example.team8salecommerce.domain.cart.entity.CartItem;
 import com.example.team8salecommerce.domain.cart.repository.CartItemRepository;
 import com.example.team8salecommerce.domain.cart.repository.CartRepository;
+import com.example.team8salecommerce.domain.member.entity.Member;
+import com.example.team8salecommerce.domain.member.repository.MemberRepository;
 import com.example.team8salecommerce.domain.product.entity.Product;
 import com.example.team8salecommerce.domain.product.repository.ProductRepository;
 import com.example.team8salecommerce.global.exception.CustomException;
@@ -26,6 +28,7 @@ public class CartService {
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final ProductRepository productRepository;
+    private final MemberRepository memberRepository;
 
     // 장바구니에 상품 추가
     // 중복 담기 시 수량 증가
@@ -36,12 +39,16 @@ public class CartService {
     ) {
         // 회원의 장바구니 조회
         Cart cart = cartRepository.findByMemberId(memberId)
-                .orElseThrow(() ->
-                        new CustomException(
-                                ErrorCode.CART_NOT_FOUND));
+                .orElseGet(() -> {
+                            Member member = memberRepository.findById(memberId)
+                                    .orElseThrow(() ->
+                                            new CustomException(
+                                                    ErrorCode.MEMBER_NOT_FOUND));
+                            return cartRepository.save(Cart.create(member));
+                        });
 
         // 상품 조회
-        Product product = productRepository.findById(
+        Product product = productRepository.findByIdAndIsDeletedFalse(
                         request.productId())
                 .orElseThrow(() ->
                         new CustomException(
@@ -76,7 +83,6 @@ public class CartService {
                             newCartItem
                     );
                 });
-
         return CartItemResponse.from(cartItem);
     }
 
@@ -98,8 +104,8 @@ public class CartService {
                         .map(CartItemDetailResponse::from)
                         .toList();
        // 장바구니 총 금액 계산
-        int totalPrice = items.stream()
-                .mapToInt(CartItemDetailResponse::totalPrice)
+        Long totalPrice = items.stream()
+                .mapToLong(CartItemDetailResponse::totalPrice)
                 .sum();
         // 장바구니 응답 생성
         return new CartResponse(

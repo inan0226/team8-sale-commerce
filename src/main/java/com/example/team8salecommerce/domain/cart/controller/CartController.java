@@ -5,6 +5,7 @@ import com.example.team8salecommerce.domain.cart.dto.request.AddCartItemRequest;
 import com.example.team8salecommerce.domain.cart.dto.response.CartItemResponse;
 import com.example.team8salecommerce.domain.cart.dto.response.CartResponse;
 import com.example.team8salecommerce.domain.cart.service.CartService;
+import com.example.team8salecommerce.global.response.ApiResponse;
 import com.example.team8salecommerce.global.security.AuthMember;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,14 +15,14 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/carts")
+@RequestMapping("/cart")
 public class CartController {
 
     private final CartService cartService;
 
     // 장바구니 상품 추가
     @PostMapping("/items")
-    public ResponseEntity<CartItemResponse> addCartItem(
+    public ResponseEntity<ApiResponse<CartItemResponse>> addCartItem(
             @AuthenticationPrincipal AuthMember authMember,
             @Valid @RequestBody AddCartItemRequest request
     ) {
@@ -32,16 +33,16 @@ public class CartController {
                         request
                 );
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     // 장바구니 조회
     @GetMapping
-    public ResponseEntity<CartResponse> getCart(
+    public ResponseEntity<ApiResponse<CartResponse>> getCart(
             @AuthenticationPrincipal AuthMember authMember
     ) {
         CartResponse response =
                 cartService.getCart(authMember.memberId());
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
