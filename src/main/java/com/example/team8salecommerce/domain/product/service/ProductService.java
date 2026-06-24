@@ -10,6 +10,7 @@ import com.example.team8salecommerce.domain.product.exception.ProductException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -24,25 +25,17 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     @Transactional(readOnly = true)
-    public ProductPageResponse getProducts(int page, int size) {
+    public ProductPageResponse getProducts(int page, int size, String sort) {
 
-        var sortOption =
-                org.springframework.data.domain.Sort
-                        .by("createdAt")
-                        .descending();
-
-        log.info("상품 목록 조회 시작");
+        Sort sortOption = createSort(sort);
 
         Pageable pageable = PageRequest.of(page, size, sortOption);
 
         Page<Product> productPage =
                 productRepository.findByIsDeletedFalse(pageable);
 
-        log.info("상품 목록 조회 완료");
-
         List<ProductListResponse> content =
-                productPage.map(ProductListResponse::from)
-                        .getContent();
+                productPage.map(ProductListResponse::from).getContent();
 
         return new ProductPageResponse(
                 content,
@@ -51,6 +44,20 @@ public class ProductService {
                 productPage.getTotalPages(),
                 productPage.getTotalElements()
         );
+    }
+
+    private Sort createSort(String sort) {
+
+        if (sort == null) {
+            return Sort.by("createdAt").descending();
+        }
+
+        return switch (sort) {
+            case "price" -> Sort.by("price").descending();
+            case "name" -> Sort.by("name").ascending();
+            case "createdAt" -> Sort.by("createdAt").descending();
+            default -> Sort.by("createdAt").descending();
+        };
     }
 
     @Transactional(readOnly = true)

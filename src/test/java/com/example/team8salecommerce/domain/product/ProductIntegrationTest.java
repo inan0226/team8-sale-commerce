@@ -2,6 +2,8 @@ package com.example.team8salecommerce.domain.product;
 
 import com.example.team8salecommerce.domain.category.entity.Category;
 import com.example.team8salecommerce.domain.category.repository.CategoryRepository;
+import com.example.team8salecommerce.domain.fixture.CategoryFixture;
+import com.example.team8salecommerce.domain.fixture.ProductFixture;
 import com.example.team8salecommerce.domain.product.entity.Product;
 import com.example.team8salecommerce.domain.product.repository.ProductRepository;
 import jakarta.transaction.Transactional;
@@ -36,21 +38,11 @@ class ProductIntegrationTest {
     void setUp() {
 
         category = categoryRepository.save(
-                new Category("전자제품")
+                CategoryFixture.전자제품()
         );
 
         product = productRepository.save(
-                new Product(
-                        "상품명",
-                        "브랜드",
-                        1000L,
-                        10,
-                        "img.jpg",
-                        "설명",
-                        false,
-                        0,
-                        category
-                )
+                ProductFixture.상품(category)
         );
     }
 
@@ -76,17 +68,7 @@ class ProductIntegrationTest {
     void 삭제된_상품_조회시_404() throws Exception {
 
         Product deletedProduct = productRepository.save(
-                new Product(
-                        "상품명2",
-                        "브랜드",
-                        1000L,
-                        10,
-                        "img.jpg",
-                        "설명",
-                        true,   // isDeleted = true
-                        0,
-                        category
-                )
+                ProductFixture.삭제된상품(category)
         );
 
         mockMvc.perform(get("/products/" + deletedProduct.getId()))

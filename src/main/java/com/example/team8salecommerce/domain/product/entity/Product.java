@@ -40,7 +40,7 @@ public class Product extends BaseEntity{
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
-    public Product(
+    private Product(
             String name,
             String brand,
             Long price,
@@ -60,5 +60,49 @@ public class Product extends BaseEntity{
         this.isDeleted = isDeleted;
         this.viewCount = viewCount;
         this.category = category;
+    }
+
+    public static Product create(
+            String name,
+            String brand,
+            Long price,
+            Integer stock,
+            String imageUrl,
+            String description,
+            Category category
+    ) {
+        return new Product(
+                name,
+                brand,
+                price,
+                stock,
+                imageUrl,
+                description,
+                false,
+                0,
+                category
+        );
+    }
+
+    public static Product createDeleted(
+            String name,
+            String brand,
+            Long price,
+            Integer stock,
+            String imageUrl,
+            String description,
+            Category category
+    ) {
+        return new Product(
+                name,
+                brand,
+                price,
+                stock,
+                imageUrl,
+                description,
+                true,
+                0,
+                category
+        );
     }
 }

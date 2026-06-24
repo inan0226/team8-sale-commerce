@@ -5,9 +5,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
+@Table(name = "categories")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
 public class Category {
 
     @Id
@@ -16,7 +17,11 @@ public class Category {
 
     private String name;
 
-    public Category(String name) {
+    private Category(String name) {
         this.name = name;
+    }
+
+    public static Category create(String name) {
+        return new Category(name);
     }
 }
