@@ -1,5 +1,7 @@
 package com.example.team8salecommerce.domain.stock.entity;
 
+import com.example.team8salecommerce.global.exception.CustomException;
+import com.example.team8salecommerce.global.exception.ErrorCode;
 import com.example.team8salecommerce.global.util.BaseEntity;
 
 import jakarta.persistence.Column;
@@ -122,6 +124,14 @@ public class StockHistory extends BaseEntity {
 		Integer stockBefore,
 		Integer stockAfter
 	) {
+
+		validateStockChange(
+			StockChangeType.DECREASE,
+			quantity,
+			stockBefore,
+			stockAfter
+		);
+
 		return new StockHistory(
 			productId,
 			promotionProductId,
@@ -151,6 +161,14 @@ public class StockHistory extends BaseEntity {
 		Integer stockBefore,
 		Integer stockAfter
 	) {
+
+		validateStockChange(
+			StockChangeType.RESTORE,
+			quantity,
+			stockBefore,
+			stockAfter
+		);
+
 		return new StockHistory(
 			productId,
 			promotionProductId,
@@ -181,6 +199,14 @@ public class StockHistory extends BaseEntity {
 		Integer stockBefore,
 		Integer stockAfter
 	) {
+
+		validateStockChange(
+			StockChangeType.RESTORE,
+			quantity,
+			stockBefore,
+			stockAfter
+		);
+
 		return new StockHistory(
 			productId,
 			promotionProductId,
@@ -193,5 +219,60 @@ public class StockHistory extends BaseEntity {
 			stockAfter,
 			StockChangeReason.REFUND_COMPLETED
 		);
+	}
+
+	/**
+	 * 재고 변경 이력의 수량 값을 검증한다.
+	 *
+	 * 재고 이력은 실제 재고 변경 결과를 기록하는 데이터이므로
+	 * 잘못된 수량이나 계산 결과가 저장되지 않도록 검증한다.
+	 */
+	private static void validateStockChange(
+		StockChangeType type,
+		Integer quantity,
+		Integer stockBefore,
+		Integer stockAfter
+	) {
+		if (type == null || quantity == null || stockBefore == null || stockAfter == null) {
+			throw new CustomException(ErrorCode.INVALID_REQUEST);
+		}
+
+		if (quantity <= 0) {
+			throw new CustomException(ErrorCode.INVALID_REQUEST);
+		}
+
+		if (stockBefore < 0 || stockAfter < 0) {
+			throw new CustomException(ErrorCode.INVALID_REQUEST);
+		}
+
+		validateStockCalculation(type, quantity, stockBefore, stockAfter);
+	}
+
+	/**
+	 * 재고 변경 타입에 따라 변경 전/후 재고 계산이 맞는지 검증한다.
+	 */
+	private static void validateStockCalculation(
+		StockChangeType type,
+		Integer quantity,
+		Integer stockBefore,
+		Integer stockAfter
+	) {
+		if (type == StockChangeType.DECREASE) {
+			int expectedStockAfter = stockBefore - quantity;
+
+			if (!stockAfter.equals(expectedStockAfter)) {
+				throw new CustomException(ErrorCode.INVALID_REQUEST);
+			}
+
+			return;
+		}
+
+		if (type == StockChangeType.RESTORE) {
+			int expectedStockAfter = stockBefore + quantity;
+
+			if (!stockAfter.equals(expectedStockAfter)) {
+				throw new CustomException(ErrorCode.INVALID_REQUEST);
+			}
+		}
 	}
 }
