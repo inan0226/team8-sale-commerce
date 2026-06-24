@@ -1,11 +1,16 @@
 package com.example.team8salecommerce.domain.stock.entity;
 
+import java.time.LocalDateTime;
+
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
-import com.example.team8salecommerce.global.util.BaseEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -29,11 +34,16 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "stock_histories")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class StockHistory extends BaseEntity {
+@EntityListeners(AuditingEntityListener.class)
+public class StockHistory {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
+
+	@CreatedDate
+	@Column(nullable = false, updatable = false)
+	private LocalDateTime createdAt;
 
 	@Column(nullable = false)
 	private Long productId;
