@@ -40,6 +40,7 @@ public enum ErrorCode {
 	PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "결제 금액이 일치하지 않습니다."),
 	PAYMENT_ALREADY_COMPLETED(HttpStatus.CONFLICT, "이미 결제 완료된 주문입니다."),
 	PAYMENT_ALREADY_FAILED(HttpStatus.CONFLICT, "이미 결제 실패 처리된 주문입니다."),
+	DUPLICATED_PAYMENT(HttpStatus.CONFLICT, "이미 처리된 결제입니다."),
 	PAYMENT_CONFIRM_FAILED(HttpStatus.BAD_REQUEST, "결제 승인에 실패했습니다."),
 	PAYMENT_FAIL_FAILED(HttpStatus.BAD_REQUEST, "결제 실패 처리에 실패했습니다."),
 
