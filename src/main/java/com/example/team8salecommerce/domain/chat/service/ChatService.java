@@ -6,9 +6,11 @@ import com.example.team8salecommerce.domain.chat.dto.ChatRoomResponse;
 import com.example.team8salecommerce.domain.chat.dto.CreateChatRoomRequest;
 import com.example.team8salecommerce.domain.chat.entity.ChatMessage;
 import com.example.team8salecommerce.domain.chat.entity.ChatRoom;
+import com.example.team8salecommerce.domain.chat.entity.ChatRoomStatus;
 import com.example.team8salecommerce.domain.chat.repository.ChatMessageRepository;
 import com.example.team8salecommerce.domain.chat.repository.ChatRoomRepository;
 import com.example.team8salecommerce.domain.member.entity.Member;
+import com.example.team8salecommerce.domain.member.entity.Role;
 import com.example.team8salecommerce.domain.member.repository.MemberRepository;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
@@ -29,14 +31,25 @@ public class ChatService {
 
     @Transactional
     public ChatRoomResponse createRoom(Long memberId, CreateChatRoomRequest request) {
+        ChatRoom existingRoom = chatRoomRepository
+                .findFirstByCreatedByIdAndStatusNotOrderByCreatedAtDesc(memberId, ChatRoomStatus.CLOSED)
+                .orElse(null);
+        if (existingRoom != null) {
+            return ChatRoomResponse.from(existingRoom);
+        }
+
         Member member = findMember(memberId);
         ChatRoom chatRoom = chatRoomRepository.save(ChatRoom.create(request.name(), member));
 
         return ChatRoomResponse.from(chatRoom);
     }
 
-    public List<ChatRoomResponse> getMyRooms(Long memberId) {
-        return chatRoomRepository.findAllByCreatedByIdOrderByCreatedAtDesc(memberId)
+    public List<ChatRoomResponse> getRooms(Long memberId, Role role) {
+        List<ChatRoom> chatRooms = role == Role.ADMIN
+                ? chatRoomRepository.findAllByOrderByCreatedAtDesc()
+                : chatRoomRepository.findAllByCreatedByIdOrderByCreatedAtDesc(memberId);
+
+        return chatRooms
                 .stream()
                 .map(ChatRoomResponse::from)
                 .toList();
@@ -58,6 +71,10 @@ public class ChatService {
         }
 
         ChatRoom chatRoom = findAccessibleRoom(memberId, roomId);
+        if (chatRoom.isClosed()) {
+            throw new CustomException(ErrorCode.CHAT_ROOM_CLOSED);
+        }
+
         Member sender = findMember(memberId);
         ChatMessage chatMessage = chatMessageRepository.save(
                 ChatMessage.create(chatRoom, sender, request.content())
@@ -74,6 +91,20 @@ public class ChatService {
 
     public void validateRoomAccess(Long memberId, Long roomId) {
         findAccessibleRoom(memberId, roomId);
+    }
+
+    @Transactional
+    public ChatRoomResponse updateRoomStatus(Long roomId, ChatRoomStatus status) {
+        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+
+        try {
+            chatRoom.updateStatus(status);
+        } catch (IllegalStateException exception) {
+            throw new CustomException(ErrorCode.INVALID_CHAT_ROOM_STATUS);
+        }
+
+        return ChatRoomResponse.from(chatRoom);
     }
 
     private ChatRoom findAccessibleRoom(Long memberId, Long roomId) {

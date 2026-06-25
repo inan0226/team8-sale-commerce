@@ -25,7 +25,7 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class WebSocketJwtChannelInterceptor implements ChannelInterceptor {
 
-    private static final Pattern CHAT_ROOM_TOPIC_PATTERN = Pattern.compile("^/sub/chat/room/(\\d+)$");
+    private static final Pattern CHAT_ROOM_TOPIC_PATTERN = Pattern.compile("^/sub/chat/rooms/(\\d+)$");
 
     private final JwtTokenProvider jwtTokenProvider;
     private final MemberRepository memberRepository;

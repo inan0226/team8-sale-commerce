@@ -40,7 +40,7 @@ class WebSocketJwtChannelInterceptorTest {
 
     @Test
     void subscribe_validatesChatRoomAccess() {
-        Message<?> message = subscribeMessage(1L, "/sub/chat/room/10");
+        Message<?> message = subscribeMessage(1L, "/sub/chat/rooms/10");
 
         interceptor.preSend(message, mock(MessageChannel.class));
 
@@ -50,7 +50,7 @@ class WebSocketJwtChannelInterceptorTest {
     @Test
     void subscribe_withoutAuthenticationFails() {
         StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
-        accessor.setDestination("/sub/chat/room/10");
+        accessor.setDestination("/sub/chat/rooms/10");
         Message<?> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
 
         assertThatThrownBy(() -> interceptor.preSend(message, mock(MessageChannel.class)))

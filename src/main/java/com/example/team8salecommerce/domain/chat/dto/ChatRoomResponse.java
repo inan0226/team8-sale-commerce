@@ -1,6 +1,7 @@
 package com.example.team8salecommerce.domain.chat.dto;
 
 import com.example.team8salecommerce.domain.chat.entity.ChatRoom;
+import com.example.team8salecommerce.domain.chat.entity.ChatRoomStatus;
 import java.time.LocalDateTime;
 
 public record ChatRoomResponse(
@@ -8,6 +9,7 @@ public record ChatRoomResponse(
         String name,
         Long createdById,
         String createdByNickname,
+        ChatRoomStatus status,
         LocalDateTime createdAt
 ) {
 
@@ -17,6 +19,7 @@ public record ChatRoomResponse(
                 chatRoom.getName(),
                 chatRoom.getCreatedBy().getId(),
                 chatRoom.getCreatedBy().getNickname(),
+                chatRoom.getStatus(),
                 chatRoom.getCreatedAt()
         );
     }

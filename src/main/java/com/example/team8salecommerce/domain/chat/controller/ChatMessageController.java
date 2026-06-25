@@ -29,7 +29,7 @@ public class ChatMessageController {
         AuthMember authMember = resolveAuthMember(principal);
         ChatMessageResponse response = chatService.sendMessage(request.chatRoomId(), authMember.memberId(), request);
 
-        messagingTemplate.convertAndSend("/sub/chat/room/" + request.chatRoomId(), response);
+        messagingTemplate.convertAndSend("/sub/chat/rooms/" + request.chatRoomId(), response);
     }
 
     private AuthMember resolveAuthMember(Principal principal) {
