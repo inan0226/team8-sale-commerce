@@ -19,8 +19,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.example.team8salecommerce.domain.category.entity.Category;
 import com.example.team8salecommerce.domain.product.entity.Product;
@@ -52,7 +58,29 @@ import jakarta.persistence.EntityManager;
  */
 @SpringBootTest
 @ActiveProfiles("test")
+@Testcontainers
 class PromotionPurchaseConcurrencyTest {
+
+	private static final int REDIS_PORT = 6379;
+
+	@Container
+	static final GenericContainer<?> redisContainer = new GenericContainer<>("redis:7-alpine")
+		.withExposedPorts(REDIS_PORT);
+
+	/**
+	 * Testcontainers Redis 연결 정보를 Spring 테스트 환경에 주입한다.
+	 *
+	 * RedissonConfig는 spring.data.redis.host, spring.data.redis.port 값을 사용해서
+	 * RedissonClient를 생성한다.
+	 *
+	 * 따라서 테스트 실행 시 localhost:6379 Redis가 없어도,
+	 * Testcontainers가 띄운 Redis 컨테이너로 연결되도록 설정한다.
+	 */
+	@DynamicPropertySource
+	static void registerRedisProperties(DynamicPropertyRegistry registry) {
+		registry.add("spring.data.redis.host", redisContainer::getHost);
+		registry.add("spring.data.redis.port", () -> redisContainer.getMappedPort(REDIS_PORT));
+	}
 
 	private static final int EVENT_STOCK = 5;
 	private static final int REQUEST_COUNT = 20;
