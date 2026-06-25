@@ -2,9 +2,11 @@ package com.example.team8salecommerce.domain.payment.service;
 
 import java.time.LocalDateTime;
 
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.example.team8salecommerce.domain.payment.client.PortOnePaymentClient;
 import com.example.team8salecommerce.domain.payment.client.PortOnePaymentInfo;
@@ -29,6 +31,9 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
+
+	private static final String PORT_ONE_PAYMENT_ID_UNIQUE_CONSTRAINT = "uk_payment_portone_payment_id";
+	private static final String PORT_ONE_PAYMENT_ID_COLUMN = "port_one_payment_id";
 
 	private final PaymentRepository paymentRepository;
 	private final PromotionOrderRepository promotionOrderRepository;
@@ -197,13 +202,40 @@ public class PaymentService {
 	 * 동시에 같은 PortOne 결제 ID로 요청이 들어오면 두 요청이 모두 사전 검증을 통과할 수 있다.
 	 *
 	 * 따라서 DB unique 제약을 최종 방어선으로 두고,
-	 * unique 제약 위반이 발생하면 공통 결제 중복 예외로 변환한다.
+	 * portOnePaymentId unique 제약 위반인 경우에만 중복 결제 예외로 변환한다.
+	 *
+	 * 그 외 DB 제약 오류는 결제 승인 실패로 처리해서,
+	 * 다른 제약조건 오류까지 DUPLICATED_PAYMENT로 잘못 내려가지 않도록 방어한다.
 	 */
 	private Payment savePaidPayment(Payment payment) {
 		try {
 			return paymentRepository.saveAndFlush(payment);
 		} catch (DataIntegrityViolationException e) {
-			throw new CustomException(ErrorCode.DUPLICATED_PAYMENT);
+			if (isPortOnePaymentIdUniqueViolation(e)) {
+				throw new CustomException(ErrorCode.DUPLICATED_PAYMENT);
+			}
+
+			throw new CustomException(ErrorCode.PAYMENT_CONFIRM_FAILED);
 		}
+	}
+
+	/**
+	 * DB 제약 오류가 portOnePaymentId unique 제약 위반인지 확인한다.
+	 *
+	 * DB와 테스트 환경마다 예외 메시지 형식이 조금 다를 수 있으므로,
+	 * 명시한 unique constraint 이름과 column 이름을 함께 확인한다.
+	 */
+	private boolean isPortOnePaymentIdUniqueViolation(DataIntegrityViolationException exception) {
+		Throwable rootCause = NestedExceptionUtils.getMostSpecificCause(exception);
+		String message = rootCause.getMessage();
+
+		if (!StringUtils.hasText(message)) {
+			return false;
+		}
+
+		String lowerCaseMessage = message.toLowerCase();
+
+		return lowerCaseMessage.contains(PORT_ONE_PAYMENT_ID_UNIQUE_CONSTRAINT)
+			|| lowerCaseMessage.contains(PORT_ONE_PAYMENT_ID_COLUMN);
 	}
 }

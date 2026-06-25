@@ -241,13 +241,43 @@ class PaymentServiceTest {
 		when(portOnePaymentClient.getPayment(PORT_ONE_PAYMENT_ID))
 			.thenReturn(createPaidPortOnePaymentInfo(ORDER_AMOUNT));
 		when(paymentRepository.saveAndFlush(any(Payment.class)))
-			.thenThrow(new DataIntegrityViolationException("Duplicated portOnePaymentId"));
+			.thenThrow(new DataIntegrityViolationException(
+				"Duplicate entry for key 'uk_payment_portone_payment_id'"
+			));
 
 		// when & then
 		assertThatThrownBy(() -> paymentService.confirmPayment(MEMBER_ID, request))
 			.isInstanceOf(CustomException.class)
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.DUPLICATED_PAYMENT);
+
+		// 결제 저장이 실패했으므로 주문 상태도 PAID로 바뀌면 안 된다.
+		assertThat(promotionOrder.isWaiting()).isTrue();
+	}
+
+	@Test
+	@DisplayName("결제 저장 중 PortOne 결제 ID 중복이 아닌 DB 제약 오류가 발생하면 결제 승인에 실패한다")
+	void confirmPaymentFailWhenUnknownDataIntegrityViolationOccurs() {
+		// given
+		PromotionOrder promotionOrder = createWaitingPromotionOrder();
+		PaymentConfirmRequest request = createRequest(ORDER_AMOUNT);
+
+		when(promotionOrderRepository.findByIdAndMemberIdForUpdate(ORDER_ID, MEMBER_ID))
+			.thenReturn(Optional.of(promotionOrder));
+		when(paymentRepository.existsByOrderIdAndStatus(ORDER_ID, PaymentStatus.PAID))
+			.thenReturn(false);
+		when(paymentRepository.findByPortOnePaymentId(PORT_ONE_PAYMENT_ID))
+			.thenReturn(Optional.empty());
+		when(portOnePaymentClient.getPayment(PORT_ONE_PAYMENT_ID))
+			.thenReturn(createPaidPortOnePaymentInfo(ORDER_AMOUNT));
+		when(paymentRepository.saveAndFlush(any(Payment.class)))
+			.thenThrow(new DataIntegrityViolationException("not null constraint violation"));
+
+		// when & then
+		assertThatThrownBy(() -> paymentService.confirmPayment(MEMBER_ID, request))
+			.isInstanceOf(CustomException.class)
+			.extracting("errorCode")
+			.isEqualTo(ErrorCode.PAYMENT_CONFIRM_FAILED);
 
 		// 결제 저장이 실패했으므로 주문 상태도 PAID로 바뀌면 안 된다.
 		assertThat(promotionOrder.isWaiting()).isTrue();

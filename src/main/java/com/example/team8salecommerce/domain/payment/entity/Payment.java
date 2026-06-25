@@ -13,13 +13,22 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "payments")
+@Table(
+	name = "payments",
+	uniqueConstraints = {
+		@UniqueConstraint(
+			name = "uk_payment_portone_payment_id",
+			columnNames = "port_one_payment_id"
+		)
+	}
+)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment extends BaseEntity {
 
@@ -36,7 +45,7 @@ public class Payment extends BaseEntity {
 	 * 외부 결제 시스템에서 전달받는 결제 식별자이다.
 	 * 중복 결제를 막기 위해 unique로 관리한다.
 	 */
-	@Column(name = "portone_payment_id", nullable = false, unique = true, length = 100)
+	@Column(name = "port_one_payment_id", nullable = false)
 	private String portOnePaymentId;
 
 	/**
