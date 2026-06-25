@@ -182,7 +182,6 @@ class PromotionPurchaseConcurrencyTest {
 		// then
 		assertThat(unexpectedExceptions).isEmpty();
 
-		// 이벤트 재고가 5개이므로 성공 요청은 정확히 5개여야 한다.
 		// 성공 요청 수는 이벤트 재고를 초과하면 안 된다.
 		// Redis Lock 획득 실패가 발생할 수 있으므로 항상 EVENT_STOCK과 정확히 같다고 고정하지 않는다.
 		assertThat(successCount.get()).isLessThanOrEqualTo(EVENT_STOCK);
