@@ -5,13 +5,14 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-    jpa:
-      open-in-view: false
-      hibernate:
-        ddl-auto: validate
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
 
-    show-sql: true
+  sql:
+    show: true
 
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
+  properties:
+    hibernate:
+      dialect: org.hibernate.dialect.MySQLDialect
