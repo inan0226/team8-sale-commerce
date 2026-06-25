@@ -1,4 +1,4 @@
-package com.example.team8salecommerce.domain.product.enums;
+package com.example.team8salecommerce.domain.product.enumtype;
 
 public enum ProductSortType {
 

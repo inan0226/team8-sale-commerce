@@ -4,7 +4,7 @@ import com.example.team8salecommerce.domain.product.dto.ProductDetailResponse;
 import com.example.team8salecommerce.domain.product.dto.ProductPageResponse;
 import com.example.team8salecommerce.domain.product.service.ProductService;
 import com.example.team8salecommerce.global.response.ApiResponse;
-import com.example.team8salecommerce.domain.product.enums.ProductSortType;
+import com.example.team8salecommerce.domain.product.enumtype.ProductSortType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;

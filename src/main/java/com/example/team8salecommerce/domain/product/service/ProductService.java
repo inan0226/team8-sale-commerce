@@ -2,7 +2,7 @@ package com.example.team8salecommerce.domain.product.service;
 
 import com.example.team8salecommerce.domain.product.dto.ProductListResponse;
 import com.example.team8salecommerce.domain.product.dto.ProductPageResponse;
-import com.example.team8salecommerce.domain.product.enums.ProductSortType;
+import com.example.team8salecommerce.domain.product.enumtype.ProductSortType;
 import com.example.team8salecommerce.domain.product.repository.ProductRepository;
 import com.example.team8salecommerce.domain.product.dto.ProductDetailResponse;
 import com.example.team8salecommerce.domain.product.entity.Product;
