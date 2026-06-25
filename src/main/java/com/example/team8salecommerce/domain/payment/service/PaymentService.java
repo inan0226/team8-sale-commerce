@@ -79,13 +79,13 @@ public class PaymentService {
 	}
 
 	/**
-	 * 결제 요청한 주문을 조회한다.
+	 * 결제 요청한 주문을 조회하면서 쓰기 락을 획득한다.
 	 *
-	 * findByIdAndMemberId를 사용해서
-	 * 주문 존재 여부와 본인 주문 여부를 함께 검증한다.
+	 * findByIdAndMemberIdForUpdate를 사용해서 주문 존재 여부와 본인 주문 여부를 함께 검증하고,
+	 * 같은 주문에 대한 결제 승인 요청이 동시에 처리되지 않도록 방어한다.
 	 */
-	private PromotionOrder findPromotionOrder(Long memberID, Long orderID) {
-		return promotionOrderRepository.findByIdAndMemberId(orderID, memberID)
+	private PromotionOrder findPromotionOrder(Long memberID, Long orderId) {
+		return promotionOrderRepository.findByIdAndMemberIdForUpdate(orderId, memberID)
 			.orElseThrow(() -> new CustomException(ErrorCode.PROMOTION_ORDER_NOT_FOUND));
 	}
 
