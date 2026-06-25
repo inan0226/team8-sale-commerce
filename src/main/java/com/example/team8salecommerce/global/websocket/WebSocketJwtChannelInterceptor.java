@@ -48,7 +48,7 @@ public class WebSocketJwtChannelInterceptor implements ChannelInterceptor {
         }
 
         if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
-            validateChatRoomSubscription(accessor.getDestination());
+            validateChatRoomSubscription(accessor.getUser(), accessor.getDestination());
         }
 
         return message;
@@ -82,14 +82,24 @@ public class WebSocketJwtChannelInterceptor implements ChannelInterceptor {
         return StompCommand.SEND.equals(command) || StompCommand.SUBSCRIBE.equals(command);
     }
 
-    private void validateChatRoomSubscription(String destination) {
+    private void validateChatRoomSubscription(Principal principal, String destination) {
         if (!StringUtils.hasText(destination)) {
             throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
 
         Matcher matcher = CHAT_ROOM_TOPIC_PATTERN.matcher(destination);
         if (matcher.matches()) {
-            chatService.validateRoom(Long.valueOf(matcher.group(1)));
+            AuthMember authMember = resolveAuthMember(principal);
+            chatService.validateRoomAccess(authMember.memberId(), Long.valueOf(matcher.group(1)));
         }
+    }
+
+    private AuthMember resolveAuthMember(Principal principal) {
+        if (principal instanceof UsernamePasswordAuthenticationToken authentication
+                && authentication.getPrincipal() instanceof AuthMember authMember) {
+            return authMember;
+        }
+
+        throw new CustomException(ErrorCode.UNAUTHORIZED);
     }
 }

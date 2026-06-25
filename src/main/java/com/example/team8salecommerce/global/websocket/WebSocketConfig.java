@@ -1,6 +1,7 @@
 package com.example.team8salecommerce.global.websocket;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -15,10 +16,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketJwtChannelInterceptor webSocketJwtChannelInterceptor;
 
+    @Value("${websocket.allowed-origin-patterns:*}")
+    private String[] allowedOriginPatterns;
+
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws/chat")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(allowedOriginPatterns);
     }
 
     @Override

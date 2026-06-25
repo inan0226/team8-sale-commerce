@@ -4,6 +4,8 @@ import com.example.team8salecommerce.domain.chat.dto.ChatMessageResponse;
 import com.example.team8salecommerce.domain.chat.dto.ChatRoomResponse;
 import com.example.team8salecommerce.domain.chat.dto.CreateChatRoomRequest;
 import com.example.team8salecommerce.domain.chat.service.ChatService;
+import com.example.team8salecommerce.global.exception.CustomException;
+import com.example.team8salecommerce.global.exception.ErrorCode;
 import com.example.team8salecommerce.global.response.ApiResponse;
 import com.example.team8salecommerce.global.security.AuthMember;
 import jakarta.validation.Valid;
@@ -29,6 +31,8 @@ public class ChatRoomController {
     public ResponseEntity<ApiResponse<List<ChatRoomResponse>>> getMyRooms(
             @AuthenticationPrincipal AuthMember authMember
     ) {
+        validateAuthenticatedMember(authMember);
+
         return ResponseEntity.ok(ApiResponse.success(chatService.getMyRooms(authMember.memberId())));
     }
 
@@ -37,13 +41,24 @@ public class ChatRoomController {
             @AuthenticationPrincipal AuthMember authMember,
             @Valid @RequestBody CreateChatRoomRequest request
     ) {
+        validateAuthenticatedMember(authMember);
+
         return ResponseEntity.ok(ApiResponse.success(chatService.createRoom(authMember.memberId(), request)));
     }
 
     @GetMapping("/{chatRoomId}/messages")
     public ResponseEntity<ApiResponse<List<ChatMessageResponse>>> getMessages(
+            @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long chatRoomId
     ) {
-        return ResponseEntity.ok(ApiResponse.success(chatService.getMessages(chatRoomId)));
+        validateAuthenticatedMember(authMember);
+
+        return ResponseEntity.ok(ApiResponse.success(chatService.getMessages(authMember.memberId(), chatRoomId)));
+    }
+
+    private void validateAuthenticatedMember(AuthMember authMember) {
+        if (authMember == null) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED);
+        }
     }
 }

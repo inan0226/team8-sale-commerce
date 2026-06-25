@@ -42,8 +42,8 @@ public class ChatService {
                 .toList();
     }
 
-    public List<ChatMessageResponse> getMessages(Long roomId) {
-        validateRoom(roomId);
+    public List<ChatMessageResponse> getMessages(Long memberId, Long roomId) {
+        validateRoomAccess(memberId, roomId);
 
         return chatMessageRepository.findAllByChatRoomIdOrderByCreatedAtAsc(roomId)
                 .stream()
@@ -57,8 +57,7 @@ public class ChatService {
             throw new CustomException(ErrorCode.CHAT_MESSAGE_EMPTY);
         }
 
-        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+        ChatRoom chatRoom = findAccessibleRoom(memberId, roomId);
         Member sender = findMember(memberId);
         ChatMessage chatMessage = chatMessageRepository.save(
                 ChatMessage.create(chatRoom, sender, request.content())
@@ -71,6 +70,21 @@ public class ChatService {
         if (!chatRoomRepository.existsById(roomId)) {
             throw new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND);
         }
+    }
+
+    public void validateRoomAccess(Long memberId, Long roomId) {
+        findAccessibleRoom(memberId, roomId);
+    }
+
+    private ChatRoom findAccessibleRoom(Long memberId, Long roomId) {
+        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+
+        if (!chatRoom.getCreatedBy().getId().equals(memberId)) {
+            throw new CustomException(ErrorCode.CHAT_ACCESS_DENIED);
+        }
+
+        return chatRoom;
     }
 
     private Member findMember(Long memberId) {
