@@ -82,4 +82,9 @@ public class CartItem extends BaseEntity {
         this.quantity += quantity;
     }
 
+    // 장바구니 상품 삭제
+    public void delete() {
+        super.delete();
+    }
+
 }

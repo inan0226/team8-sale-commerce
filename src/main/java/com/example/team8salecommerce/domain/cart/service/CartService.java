@@ -1,6 +1,7 @@
 package com.example.team8salecommerce.domain.cart.service;
 
 import com.example.team8salecommerce.domain.cart.dto.request.AddCartItemRequest;
+import com.example.team8salecommerce.domain.cart.dto.request.UpdateCartItemRequest;
 import com.example.team8salecommerce.domain.cart.dto.response.CartItemDetailResponse;
 import com.example.team8salecommerce.domain.cart.dto.response.CartItemResponse;
 import com.example.team8salecommerce.domain.cart.dto.response.CartResponse;
@@ -38,15 +39,16 @@ public class CartService {
             Long memberId,
             AddCartItemRequest request
     ) {
-        // 회원의 장바구니 조회
+        // 회원 조회
+        Member member = getMember(memberId);
+
+        // 회원의 장바구니 조회 (없으면 생성)
         Cart cart = cartRepository.findByMemberId(memberId)
-                .orElseGet(() -> {
-                            Member member = memberRepository.findById(memberId)
-                                    .orElseThrow(() ->
-                                            new CustomException(
-                                                    ErrorCode.MEMBER_NOT_FOUND));
-                            return cartRepository.save(Cart.create(member));
-                        });
+                .orElseGet(() ->
+                            cartRepository.save(
+                                    Cart.create(member)
+                            )
+                        );
 
         // 상품 조회
         Product product = productRepository.findByIdAndIsDeletedFalse(
@@ -92,8 +94,15 @@ public class CartService {
     @Transactional(readOnly = true)
     public CartResponse getCart(Long memberId) {
         // 조회 api이므로 다른 insert를 발생시키는건 X
+
+        // 회원 조회
+        getMember(memberId);
+
+        // 장바구니 조회
         Optional<Cart> optionalCart =
                 cartRepository.findByMemberId(memberId);
+
+        // 장바구니가 없는 경우 빈 장바구니 반환
         if (optionalCart.isEmpty()) {
             return new CartResponse(
                     null,
@@ -102,7 +111,7 @@ public class CartService {
             );
         }
         Cart cart = optionalCart.get();
-
+        // 장바구니 상품 목록 조회
         List<CartItemDetailResponse> items =
                 cartItemRepository.findByCartId(cart.getId())
                         .stream()
@@ -119,5 +128,104 @@ public class CartService {
                 items,
                 totalPrice
         );
+    }
+
+    // 장바구니 상품 수량 변경
+    @Transactional
+    public CartItemResponse updateCartItemQuantity(
+            Long memberId,
+            Long cartItemId,
+            UpdateCartItemRequest request
+    ) {
+        // 회원 조회
+        Member member = getMember(memberId);
+
+        // 회원 장바구니 조회
+        Cart cart = getCartByMemberId(member.getId());
+
+        // 장바구니 상품 조회
+        CartItem cartItem = getCartItem(cartItemId);
+
+        // 자신의 장바구니 상품인지 검증
+        validateCartOwner(cart, cartItem);
+
+        // 수량 변경
+        cartItem.updateQuantity(request.quantity());
+
+        // 응답 반환
+        return CartItemResponse.from(cartItem);
+    }
+
+    // 장바구니 상품 삭제
+    @Transactional
+    public void deleteCartItem(
+            Long memberId,
+            Long cartItemId
+    ) {
+        // 회원 조회
+        Member member = getMember(memberId);
+
+        // 회원 장바구니 조회
+        Cart cart = getCartByMemberId(member.getId());
+
+        // 장바구니 상품 조회
+        CartItem cartItem = getCartItem(cartItemId);
+
+        // 자신의 장바구니 상품인지 검증
+        validateCartOwner(cart, cartItem);
+
+        // Soft Delete
+        cartItem.delete();
+    }
+
+
+    // 공통 메서드
+
+    /**
+     * 회원 조회
+     */
+    private Member getMember(Long memberId) {
+        return memberRepository.findById(memberId)
+                .orElseThrow(() ->
+                        new CustomException(
+                                ErrorCode.MEMBER_NOT_FOUND
+                        ));
+    }
+
+    /**
+     * 회원 장바구니 조회
+     */
+    private Cart getCartByMemberId(Long memberId) {
+        return cartRepository.findByMemberId(memberId)
+                .orElseThrow(() ->
+                        new CustomException(
+                                ErrorCode.CART_NOT_FOUND
+                        ));
+    }
+
+    /**
+     * 장바구니 상품 조회
+     */
+    private CartItem getCartItem(Long cartItemId) {
+        return cartItemRepository
+                .findByIdAndDeletedAtIsNull(cartItemId)
+                .orElseThrow(() ->
+                        new CustomException(
+                                ErrorCode.CART_ITEM_NOT_FOUND
+                        ));
+    }
+
+    /**
+     * 장바구니 소유자 검증
+     */
+    private void validateCartOwner(
+            Cart cart,
+            CartItem cartItem
+    ) {
+        if (!cartItem.getCart().getId().equals(cart.getId())) {
+            throw new CustomException(
+                    ErrorCode.FORBIDDEN
+            );
+        }
     }
 }

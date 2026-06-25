@@ -22,4 +22,7 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
             Long cartId,
             Long productId
     );
+
+    // 삭제되지 않은 장바구니 상품 조회
+    Optional<CartItem> findByIdAndDeletedAtIsNull(Long cartItemId);
 }
