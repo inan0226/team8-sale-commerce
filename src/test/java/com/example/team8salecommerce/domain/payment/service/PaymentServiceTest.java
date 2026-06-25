@@ -17,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.example.team8salecommerce.domain.payment.dto.PaymentConfirmRequest;
@@ -30,10 +31,13 @@ import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
 
 /**
- * 결제 서비스 단위 테스트
- *
- * 결제 승인 시 주문 조회, 주문 상태 검증, 중복 결제 검증,
- * 결제 금액 검증, Payment 저장, 주문 상태 변경이 정상적으로 동작하는지 검증한다.
+
+ 결제 서비스 단위 테스트
+
+
+ 결제 승인 시 주문 조회, 주문 상태 검증, 중복 결제 검증,
+
+ 결제 금액 검증, Payment 저장, 주문 상태 변경이 정상적으로 동작하는지 검증한다.
  */
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
@@ -67,7 +71,7 @@ class PaymentServiceTest {
 			.thenReturn(false);
 		when(paymentRepository.findByPortOnePaymentId(PORT_ONE_PAYMENT_ID))
 			.thenReturn(Optional.empty());
-		when(paymentRepository.save(any(Payment.class)))
+		when(paymentRepository.saveAndFlush(any(Payment.class)))
 			.thenAnswer(invocation -> {
 				Payment payment = invocation.getArgument(0);
 
@@ -94,7 +98,7 @@ class PaymentServiceTest {
 		assertThat(promotionOrder.isPaid()).isTrue();
 
 		ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
-		verify(paymentRepository).save(paymentCaptor.capture());
+		verify(paymentRepository).saveAndFlush(paymentCaptor.capture());
 
 		Payment savedPayment = paymentCaptor.getValue();
 
@@ -103,6 +107,7 @@ class PaymentServiceTest {
 		assertThat(savedPayment.getAmount()).isEqualTo(ORDER_AMOUNT);
 		assertThat(savedPayment.getStatus()).isEqualTo(PaymentStatus.PAID);
 		assertThat(savedPayment.getPaidAt()).isNotNull();
+
 	}
 
 	@Test
@@ -118,7 +123,8 @@ class PaymentServiceTest {
 			.isEqualTo(ErrorCode.UNAUTHORIZED);
 
 		verify(promotionOrderRepository, never()).findByIdAndMemberId(any(), any());
-		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
+
 	}
 
 	@Test
@@ -136,7 +142,8 @@ class PaymentServiceTest {
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.PROMOTION_ORDER_NOT_FOUND);
 
-		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
+
 	}
 
 	@Test
@@ -157,7 +164,8 @@ class PaymentServiceTest {
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.PAYMENT_ALREADY_COMPLETED);
 
-		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
+
 	}
 
 	@Test
@@ -178,7 +186,8 @@ class PaymentServiceTest {
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.PAYMENT_ALREADY_COMPLETED);
 
-		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
+
 	}
 
 	@Test
@@ -208,7 +217,35 @@ class PaymentServiceTest {
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.DUPLICATED_PAYMENT);
 
-		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
+
+	}
+
+	@Test
+	@DisplayName("동시에 같은 PortOne 결제 ID가 저장되어 DB unique 제약에 걸리면 결제 승인에 실패한다")
+	void confirmPaymentFailWhenPortOnePaymentIdDuplicatedByDatabaseConstraint() {
+		// given
+		PromotionOrder promotionOrder = createWaitingPromotionOrder();
+		PaymentConfirmRequest request = createRequest(ORDER_AMOUNT);
+
+		when(promotionOrderRepository.findByIdAndMemberId(ORDER_ID, MEMBER_ID))
+			.thenReturn(Optional.of(promotionOrder));
+		when(paymentRepository.existsByOrderIdAndStatus(ORDER_ID, PaymentStatus.PAID))
+			.thenReturn(false);
+		when(paymentRepository.findByPortOnePaymentId(PORT_ONE_PAYMENT_ID))
+			.thenReturn(Optional.empty());
+		when(paymentRepository.saveAndFlush(any(Payment.class)))
+			.thenThrow(new DataIntegrityViolationException("Duplicated portOnePaymentId"));
+
+		// when & then
+		assertThatThrownBy(() -> paymentService.confirmPayment(MEMBER_ID, request))
+			.isInstanceOf(CustomException.class)
+			.extracting("errorCode")
+			.isEqualTo(ErrorCode.DUPLICATED_PAYMENT);
+
+		// 결제 저장이 실패했으므로 주문 상태도 PAID로 바뀌면 안 된다.
+		assertThat(promotionOrder.isWaiting()).isTrue();
+
 	}
 
 	@Test
@@ -231,14 +268,18 @@ class PaymentServiceTest {
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
 
-		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
+
 	}
 
 	/**
-	 * 결제 대기 상태의 특가 주문을 생성한다.
-	 *
-	 * PromotionOrder는 실제 DB에 저장되어야 id가 생성되지만,
-	 * 단위 테스트에서는 DB를 사용하지 않으므로 ReflectionTestUtils로 id를 세팅한다.
+
+	 결제 대기 상태의 특가 주문을 생성한다.
+
+
+	 PromotionOrder는 실제 DB에 저장되어야 id가 생성되지만,
+
+	 단위 테스트에서는 DB를 사용하지 않으므로 ReflectionTestUtils로 id를 세팅한다.
 	 */
 	private PromotionOrder createWaitingPromotionOrder() {
 		PromotionOrder promotionOrder = PromotionOrder.create(
@@ -254,7 +295,8 @@ class PaymentServiceTest {
 	}
 
 	/**
-	 * 결제 승인 요청 DTO를 생성한다.
+
+	 결제 승인 요청 DTO를 생성한다.
 	 */
 	private PaymentConfirmRequest createRequest(Long amount) {
 		return new PaymentConfirmRequest(

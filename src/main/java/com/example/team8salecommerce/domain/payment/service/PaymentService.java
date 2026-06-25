@@ -2,6 +2,7 @@ package com.example.team8salecommerce.domain.payment.service;
 
 import java.time.LocalDateTime;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,7 +59,7 @@ public class PaymentService {
 			paidAt
 		);
 
-		Payment savedPayment = paymentRepository.save(payment);
+		Payment savedPayment = savePaidPayment(payment);
 
 		promotionOrder.markAsPaid(paidAt);
 
@@ -127,6 +128,23 @@ public class PaymentService {
 		boolean duplicated = paymentRepository.findByPortOnePaymentId(portOnePaymentId).isPresent();
 
 		if (duplicated) {
+			throw new CustomException(ErrorCode.DUPLICATED_PAYMENT);
+		}
+	}
+
+	/**
+	 * 결제 승인 정보를 저장한다.
+	 *
+	 * 애플리케이션 레벨에서 PortOne 결제 ID 중복을 먼저 검증하지만,
+	 * 동시에 같은 PortOne 결제 ID로 요청이 들어오면 두 요청이 모두 사전 검증을 통과할 수 있다.
+	 *
+	 * 따라서 DB unique 제약을 최종 방어선으로 두고,
+	 * unique 제약 위반이 발생하면 공통 결제 중복 예외로 변환한다.
+	 */
+	private Payment savePaidPayment(Payment payment) {
+		try {
+			return paymentRepository.saveAndFlush(payment);
+		} catch (DataIntegrityViolationException e) {
 			throw new CustomException(ErrorCode.DUPLICATED_PAYMENT);
 		}
 	}
