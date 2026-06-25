@@ -42,14 +42,6 @@ public class RedisLockManager {
 	 */
 	private static final long DEFAULT_WAIT_TIME = 3L;
 
-	/**
-	 * Lock 자동 해제 시간
-	 *
-	 * 예상치 못한 오류로 unlock이 호출되지 않아도
-	 * 5초 뒤에는 Redis Lock이 자동으로 해제된다.
-	 */
-	private static final long DEFAULT_LEASE_TIME = 5L;
-
 	private final RedissonClient redissonClient;
 
 	/**
@@ -80,7 +72,6 @@ public class RedisLockManager {
 		try {
 			isLocked = lock.tryLock(
 				DEFAULT_WAIT_TIME,
-				DEFAULT_LEASE_TIME,
 				TimeUnit.SECONDS
 			);
 
