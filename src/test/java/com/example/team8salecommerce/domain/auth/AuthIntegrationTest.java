@@ -6,11 +6,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -18,6 +20,15 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class AuthIntegrationTest {
+
+	/**
+	 * 인증 통합 테스트는 Redis Lock 기능을 직접 검증하지 않는다.
+	 *
+	 * 하지만 애플리케이션 컨텍스트가 로딩될 때 RedissonClient Bean이 필요하므로,
+	 * 테스트 환경에서는 실제 Redis(localhost:6379)에 연결하지 않도록 Mock으로 대체한다.
+	 */
+	@MockitoBean
+	private RedissonClient redissonClient;
 
     @Autowired
     private MockMvc mockMvc;
