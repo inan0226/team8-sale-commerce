@@ -4,7 +4,7 @@ import com.example.team8salecommerce.domain.product.dto.ProductDetailResponse;
 import com.example.team8salecommerce.domain.product.dto.ProductPageResponse;
 import com.example.team8salecommerce.domain.product.service.ProductService;
 import com.example.team8salecommerce.global.response.ApiResponse;
-
+import com.example.team8salecommerce.domain.product.enums.ProductSortType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -36,8 +36,8 @@ public class ProductController {
             @Max(100)
             int size,
 
-            @RequestParam(defaultValue = "createdAt")
-            String sort
+            @RequestParam(defaultValue = "LATEST")
+            ProductSortType sort
     ) {
 
         ProductPageResponse response =

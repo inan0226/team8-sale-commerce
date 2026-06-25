@@ -14,6 +14,7 @@ select p
 from Product p
 join fetch p.category
 where p.id = :id
+  and p.isDeleted = false
 """)
     Optional<Product> findByIdWithCategory(Long id);
 

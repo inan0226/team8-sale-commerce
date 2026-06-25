@@ -2,6 +2,7 @@ package com.example.team8salecommerce.domain.product.service;
 
 import com.example.team8salecommerce.domain.product.dto.ProductListResponse;
 import com.example.team8salecommerce.domain.product.dto.ProductPageResponse;
+import com.example.team8salecommerce.domain.product.enums.ProductSortType;
 import com.example.team8salecommerce.domain.product.repository.ProductRepository;
 import com.example.team8salecommerce.domain.product.dto.ProductDetailResponse;
 import com.example.team8salecommerce.domain.product.entity.Product;
@@ -25,7 +26,7 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     @Transactional(readOnly = true)
-    public ProductPageResponse getProducts(int page, int size, String sort) {
+    public ProductPageResponse getProducts(int page, int size, ProductSortType sort) {
 
         Sort sortOption = createSort(sort);
 
@@ -46,17 +47,28 @@ public class ProductService {
         );
     }
 
-    private Sort createSort(String sort) {
+    private Sort createSort(ProductSortType sort) {
 
         if (sort == null) {
             return Sort.by("createdAt").descending();
         }
 
         return switch (sort) {
-            case "price" -> Sort.by("price").descending();
-            case "name" -> Sort.by("name").ascending();
-            case "createdAt" -> Sort.by("createdAt").descending();
-            default -> Sort.by("createdAt").descending();
+
+            case LATEST ->
+                    Sort.by("createdAt").descending();
+
+            case PRICE_ASC ->
+                    Sort.by("price").ascending();
+
+            case PRICE_DESC ->
+                    Sort.by("price").descending();
+
+            case NAME_ASC ->
+                    Sort.by("name").ascending();
+
+            case NAME_DESC ->
+                    Sort.by("name").descending();
         };
     }
 
@@ -64,7 +76,8 @@ public class ProductService {
     public ProductDetailResponse getProductDetail(Long productId) {
 
         Product product = productRepository.findByIdWithCategory(productId)
-                .orElseThrow(() -> new ProductException(ErrorCode.PRODUCT_NOT_FOUND));
+                .orElseThrow(() ->
+                        new ProductException(ErrorCode.PRODUCT_NOT_FOUND));
 
         return ProductDetailResponse.from(product);
     }
