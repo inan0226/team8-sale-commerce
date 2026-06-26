@@ -35,3 +35,10 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# Logs and Local execution files
+*.log
+Task
+There
+initializationError
+
