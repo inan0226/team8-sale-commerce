@@ -6,6 +6,7 @@ public record ProductSearchResponse(
     List<SearchProductDetailResponse> content,
     int page,
     int size,
-    int totalPages
+    int totalPages,
+    long totalElements
 ) {
 }

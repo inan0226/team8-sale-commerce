@@ -60,6 +60,7 @@ class ProductSearchServiceTest {
         assertThat(response.page()).isEqualTo(0);
         assertThat(response.size()).isEqualTo(20);
         assertThat(response.totalPages()).isEqualTo(1);
+        assertThat(response.totalElements()).isEqualTo(1L);
 
         verify(productRepository).findAll(any(Specification.class), any(Pageable.class));
     }

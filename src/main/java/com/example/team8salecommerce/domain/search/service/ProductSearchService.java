@@ -24,7 +24,7 @@ public class ProductSearchService {
 
     @Cacheable(
             value = "productSearch",
-            key = "#keyword + ':' + #minPrice + ':' + #maxPrice + ':' + #categoryId"
+            key = "#keyword + ':' + #minPrice + ':' + #maxPrice + ':' + #categoryId + ':' + #page + ':' + #size"
     )
     @Transactional(readOnly = true)
     public ProductSearchResponse searchProducts(
@@ -42,7 +42,8 @@ public class ProductSearchService {
                 content,
                 productPage.getNumber(),
                 productPage.getSize(),
-                productPage.getTotalPages()
+                productPage.getTotalPages(),
+                productPage.getTotalElements()
         );
     }
 }
