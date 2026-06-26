@@ -50,7 +50,7 @@ public class ProductController {
 
     @GetMapping("/{productId}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> getProductDetail(
-            @PathVariable Long productId
+            @PathVariable @Min(1) Long productId
     ) {
 
         ProductDetailResponse response =

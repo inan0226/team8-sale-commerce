@@ -7,8 +7,8 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "categories")
-@Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
 public class Category {
 
     @Id
@@ -16,4 +16,12 @@ public class Category {
     private Long id;
 
     private String name;
+
+    private Category(String name) {
+        this.name = name;
+    }
+
+    public static Category create(String name) {
+        return new Category(name);
+    }
 }
