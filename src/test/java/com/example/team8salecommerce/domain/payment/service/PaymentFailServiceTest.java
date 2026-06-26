@@ -17,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.example.team8salecommerce.domain.payment.dto.PaymentFailRequest;
@@ -97,9 +98,9 @@ class PaymentFailServiceTest {
 			.thenReturn(Optional.empty());
 		when(promotionOrderItemRepository.findByPromotionOrderId(ORDER_ID))
 			.thenReturn(Optional.of(promotionOrderItem));
-		when(promotionProductRepository.findById(PROMOTION_PRODUCT_ID))
+		when(promotionProductRepository.findByIdForUpdate(PROMOTION_PRODUCT_ID))
 			.thenReturn(Optional.of(promotionProduct));
-		when(paymentRepository.save(any(Payment.class)))
+		when(paymentRepository.saveAndFlush(any(Payment.class)))
 			.thenAnswer(invocation -> {
 				Payment payment = invocation.getArgument(0);
 
@@ -130,7 +131,7 @@ class PaymentFailServiceTest {
 		assertThat(promotionProduct.getRemainingEventStock()).isEqualTo(5);
 
 		ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
-		verify(paymentRepository).save(paymentCaptor.capture());
+		verify(paymentRepository).saveAndFlush(paymentCaptor.capture());
 
 		Payment savedPayment = paymentCaptor.getValue();
 
@@ -170,7 +171,7 @@ class PaymentFailServiceTest {
 			.isEqualTo(ErrorCode.UNAUTHORIZED);
 
 		verify(promotionOrderRepository, never()).findByIdAndMemberIdForUpdate(any(), any());
-		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
 		verify(stockHistoryRepository, never()).save(any(StockHistory.class));
 	}
 
@@ -189,7 +190,7 @@ class PaymentFailServiceTest {
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.PROMOTION_ORDER_NOT_FOUND);
 
-		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
 		verify(stockHistoryRepository, never()).save(any(StockHistory.class));
 	}
 
@@ -211,7 +212,7 @@ class PaymentFailServiceTest {
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.INVALID_PROMOTION_ORDER_STATUS);
 
-		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
 		verify(stockHistoryRepository, never()).save(any(StockHistory.class));
 	}
 
@@ -233,7 +234,7 @@ class PaymentFailServiceTest {
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.PAYMENT_ALREADY_COMPLETED);
 
-		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
 		verify(stockHistoryRepository, never()).save(any(StockHistory.class));
 	}
 
@@ -257,7 +258,7 @@ class PaymentFailServiceTest {
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.PAYMENT_ALREADY_FAILED);
 
-		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
 		verify(stockHistoryRepository, never()).save(any(StockHistory.class));
 	}
 
@@ -291,7 +292,7 @@ class PaymentFailServiceTest {
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.DUPLICATED_PAYMENT);
 
-		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
 		verify(stockHistoryRepository, never()).save(any(StockHistory.class));
 	}
 
@@ -317,7 +318,79 @@ class PaymentFailServiceTest {
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
 
-		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
+		verify(stockHistoryRepository, never()).save(any(StockHistory.class));
+	}
+
+	@Test
+	@DisplayName("PortOne 결제 ID unique 제약 위반이면 중복 결제 예외가 발생한다")
+	void failPaymentFailWhenPortOnePaymentIdUniqueConstraintViolation() {
+		// given
+		PromotionOrder promotionOrder = createWaitingPromotionOrder();
+		PromotionOrderItem promotionOrderItem = createPromotionOrderItem();
+		PromotionProduct promotionProduct = createPromotionProduct();
+		PaymentFailRequest request = createRequest(ORDER_AMOUNT);
+
+		promotionProduct.decreaseStock(PURCHASE_QUANTITY);
+
+		when(promotionOrderRepository.findByIdAndMemberIdForUpdate(ORDER_ID, MEMBER_ID))
+			.thenReturn(Optional.of(promotionOrder));
+		when(paymentRepository.existsByOrderIdAndStatus(ORDER_ID, PaymentStatus.PAID))
+			.thenReturn(false);
+		when(paymentRepository.existsByOrderIdAndStatus(ORDER_ID, PaymentStatus.FAILED))
+			.thenReturn(false);
+		when(paymentRepository.findByPortOnePaymentId(PORT_ONE_PAYMENT_ID))
+			.thenReturn(Optional.empty());
+		when(promotionOrderItemRepository.findByPromotionOrderId(ORDER_ID))
+			.thenReturn(Optional.of(promotionOrderItem));
+		when(promotionProductRepository.findByIdForUpdate(PROMOTION_PRODUCT_ID))
+			.thenReturn(Optional.of(promotionProduct));
+		when(paymentRepository.saveAndFlush(any(Payment.class)))
+			.thenThrow(new DataIntegrityViolationException(
+				"Duplicate entry for key 'uk_payment_portone_payment_id'"
+			));
+
+		// when & then
+		assertThatThrownBy(() -> paymentFailService.failPayment(MEMBER_ID, request))
+			.isInstanceOf(CustomException.class)
+			.extracting("errorCode")
+			.isEqualTo(ErrorCode.DUPLICATED_PAYMENT);
+
+		verify(stockHistoryRepository, never()).save(any(StockHistory.class));
+	}
+
+	@Test
+	@DisplayName("알 수 없는 DB 제약 오류가 발생하면 결제 실패 처리 실패 예외가 발생한다")
+	void failPaymentFailWhenUnknownDataIntegrityViolationOccurs() {
+		// given
+		PromotionOrder promotionOrder = createWaitingPromotionOrder();
+		PromotionOrderItem promotionOrderItem = createPromotionOrderItem();
+		PromotionProduct promotionProduct = createPromotionProduct();
+		PaymentFailRequest request = createRequest(ORDER_AMOUNT);
+
+		promotionProduct.decreaseStock(PURCHASE_QUANTITY);
+
+		when(promotionOrderRepository.findByIdAndMemberIdForUpdate(ORDER_ID, MEMBER_ID))
+			.thenReturn(Optional.of(promotionOrder));
+		when(paymentRepository.existsByOrderIdAndStatus(ORDER_ID, PaymentStatus.PAID))
+			.thenReturn(false);
+		when(paymentRepository.existsByOrderIdAndStatus(ORDER_ID, PaymentStatus.FAILED))
+			.thenReturn(false);
+		when(paymentRepository.findByPortOnePaymentId(PORT_ONE_PAYMENT_ID))
+			.thenReturn(Optional.empty());
+		when(promotionOrderItemRepository.findByPromotionOrderId(ORDER_ID))
+			.thenReturn(Optional.of(promotionOrderItem));
+		when(promotionProductRepository.findByIdForUpdate(PROMOTION_PRODUCT_ID))
+			.thenReturn(Optional.of(promotionProduct));
+		when(paymentRepository.saveAndFlush(any(Payment.class)))
+			.thenThrow(new DataIntegrityViolationException("not null constraint violation"));
+
+		// when & then
+		assertThatThrownBy(() -> paymentFailService.failPayment(MEMBER_ID, request))
+			.isInstanceOf(CustomException.class)
+			.extracting("errorCode")
+			.isEqualTo(ErrorCode.PAYMENT_FAIL_FAILED);
+
 		verify(stockHistoryRepository, never()).save(any(StockHistory.class));
 	}
 

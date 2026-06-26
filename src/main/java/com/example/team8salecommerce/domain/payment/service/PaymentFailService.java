@@ -1,9 +1,13 @@
 package com.example.team8salecommerce.domain.payment.service;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
+import org.springframework.core.NestedExceptionUtils;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.example.team8salecommerce.domain.payment.dto.PaymentFailRequest;
 import com.example.team8salecommerce.domain.payment.dto.PaymentFailResponse;
@@ -31,11 +35,15 @@ import lombok.RequiredArgsConstructor;
  * 특가 주문 상태를 PAYMENT_FAILED로 변경한다.
  *
  * 결제 실패 처리 중 재고 복구가 중복으로 일어나면 안 되므로,
- * 주문 row lock을 획득한 뒤 주문 상태와 결제 내역을 검증한다.
+ * 주문 row lock과 특가 상품 row lock을 획득한 뒤 상태와 재고를 변경한다.
  */
 @Service
 @RequiredArgsConstructor
 public class PaymentFailService {
+
+	private static final String PORT_ONE_PAYMENT_ID_UNIQUE_CONSTRAINT =
+		"uk_payment_portone_payment_id";
+	private static final String PORT_ONE_PAYMENT_ID_COLUMN = "port_one_payment_id";
 
 	private final PaymentRepository paymentRepository;
 	private final PromotionOrderRepository promotionOrderRepository;
@@ -68,7 +76,7 @@ public class PaymentFailService {
 			promotionOrder.getId()
 		);
 
-		PromotionProduct promotionProduct = findPromotionProduct(
+		PromotionProduct promotionProduct = findPromotionProductForUpdate(
 			promotionOrder.getPromotionProductId()
 		);
 
@@ -83,7 +91,7 @@ public class PaymentFailService {
 			request.failureReason()
 		);
 
-		Payment savedPayment = paymentRepository.save(payment);
+		Payment savedPayment = saveFailedPayment(payment);
 
 		promotionOrder.failPayment(failedAt);
 
@@ -195,17 +203,55 @@ public class PaymentFailService {
 	 */
 	private PromotionOrderItem findPromotionOrderItem(Long promotionOrderId) {
 		return promotionOrderItemRepository.findByPromotionOrderId(promotionOrderId)
-			.orElseThrow(() -> new CustomException(ErrorCode.PROMOTION_ORDER_NOT_FOUND));
+			.orElseThrow(() -> new CustomException(ErrorCode.PROMOTION_ORDER_ITEM_NOT_FOUND));
 	}
 
 	/**
-	 * 특가 상품을 조회한다.
+	 * 특가 상품을 조회하면서 row lock을 획득한다.
 	 *
-	 * 결제 실패 시 이벤트 재고를 복구할 대상이다.
+	 * 서로 다른 주문이 같은 특가 상품 재고를 동시에 복구하면 lost update가 발생할 수 있으므로
+	 * 특가 상품 row lock을 잡고 remainingEventStock을 변경한다.
 	 */
-	private PromotionProduct findPromotionProduct(Long promotionProductId) {
-		return promotionProductRepository.findById(promotionProductId)
+	private PromotionProduct findPromotionProductForUpdate(Long promotionProductId) {
+		return promotionProductRepository.findByIdForUpdate(promotionProductId)
 			.orElseThrow(() -> new CustomException(ErrorCode.PROMOTION_PRODUCT_NOT_FOUND));
+	}
+
+	/**
+	 * 결제 실패 정보를 저장한다.
+	 *
+	 * portOnePaymentId unique 제약 위반인 경우에는 DUPLICATED_PAYMENT로 변환하고,
+	 * 그 외 DB 제약 오류는 PAYMENT_FAIL_FAILED로 처리한다.
+	 */
+	private Payment saveFailedPayment(Payment payment) {
+		try {
+			return paymentRepository.saveAndFlush(payment);
+		} catch (DataIntegrityViolationException e) {
+			if (isPortOnePaymentIdUniqueViolation(e)) {
+				throw new CustomException(ErrorCode.DUPLICATED_PAYMENT);
+			}
+
+			throw new CustomException(ErrorCode.PAYMENT_FAIL_FAILED);
+		}
+	}
+
+	/**
+	 * DB 제약 오류가 portOnePaymentId unique 제약 위반인지 확인한다.
+	 */
+	private boolean isPortOnePaymentIdUniqueViolation(
+		DataIntegrityViolationException exception
+	) {
+		Throwable rootCause = NestedExceptionUtils.getMostSpecificCause(exception);
+		String message = rootCause.getMessage();
+
+		if (!StringUtils.hasText(message)) {
+			return false;
+		}
+
+		String lowerCaseMessage = message.toLowerCase(Locale.ROOT);
+
+		return lowerCaseMessage.contains(PORT_ONE_PAYMENT_ID_UNIQUE_CONSTRAINT)
+			|| lowerCaseMessage.contains(PORT_ONE_PAYMENT_ID_COLUMN);
 	}
 
 	/**
