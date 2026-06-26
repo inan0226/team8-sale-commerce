@@ -47,7 +47,7 @@ public class RefundCompleteTransactionService {
 		validateContext(context);
 
 		Refund refund = findRefundForUpdate(context.refundId());
-		validateRefundRequested(refund);
+		validatePortOneRefundSucceeded(refund);
 
 		PromotionOrder promotionOrder = findPromotionOrderForUpdate(refund);
 		PromotionOrderItem orderItem = findPromotionOrderItem(refund.getOrderId());
@@ -99,10 +99,12 @@ public class RefundCompleteTransactionService {
 	}
 
 	/**
-	 * 환불 요청 상태인지 검증한다.
+	 * PortOne 환불 성공 상태인지 검증한다.
+	 *
+	 * 실제 외부 환불이 성공한 건만 내부 완료 처리할 수 있다.
 	 */
-	private void validateRefundRequested(Refund refund) {
-		if (!refund.isRequested()) {
+	private void validatePortOneRefundSucceeded(Refund refund) {
+		if (!refund.isPortOneRefundSucceeded()) {
 			throw new CustomException(ErrorCode.REFUND_NOT_ALLOWED);
 		}
 	}

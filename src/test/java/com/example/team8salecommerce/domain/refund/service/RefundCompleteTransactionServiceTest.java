@@ -88,7 +88,7 @@ class RefundCompleteTransactionServiceTest {
 			refundAmount
 		);
 
-		Refund refund = createRequestedRefund(
+		Refund refund = createPortOneRefundSucceededRefund(
 			refundId,
 			orderId,
 			paymentId,
@@ -213,8 +213,8 @@ class RefundCompleteTransactionServiceTest {
 	}
 
 	@Test
-	@DisplayName("환불 요청 상태가 아니면 환불 완료 처리에 실패한다")
-	void completeRefundFailWhenRefundIsNotRequested() {
+	@DisplayName("PortOne 환불 성공 상태가 아니면 환불 완료 처리에 실패한다")
+	void completeRefundFailWhenRefundIsNotPortOneRefundSucceeded() {
 		// given
 		Long refundId = 1L;
 
@@ -233,8 +233,6 @@ class RefundCompleteTransactionServiceTest {
 			1L,
 			7000L
 		);
-
-		refund.complete(LocalDateTime.now());
 
 		when(refundRepository.findByIdForUpdate(refundId))
 			.thenReturn(Optional.of(refund));
@@ -267,7 +265,7 @@ class RefundCompleteTransactionServiceTest {
 			7000L
 		);
 
-		Refund refund = createRequestedRefund(
+		Refund refund = createPortOneRefundSucceededRefund(
 			refundId,
 			orderId,
 			20L,
@@ -309,7 +307,7 @@ class RefundCompleteTransactionServiceTest {
 			7000L
 		);
 
-		Refund refund = createRequestedRefund(
+		Refund refund = createPortOneRefundSucceededRefund(
 			refundId,
 			orderId,
 			20L,
@@ -363,7 +361,7 @@ class RefundCompleteTransactionServiceTest {
 			7000L
 		);
 
-		Refund refund = createRequestedRefund(
+		Refund refund = createPortOneRefundSucceededRefund(
 			refundId,
 			orderId,
 			20L,
@@ -453,6 +451,35 @@ class RefundCompleteTransactionServiceTest {
 		);
 
 		ReflectionTestUtils.setField(refund, "id", refundId);
+
+		return refund;
+	}
+
+	/**
+	 * 테스트용 PortOne 환불 성공 상태 환불 엔티티를 생성한다.
+	 *
+	 * 환불 완료 처리 Service는 PortOne 환불 성공 상태인 Refund만 완료 처리할 수 있다.
+	 */
+	private Refund createPortOneRefundSucceededRefund(
+		Long refundId,
+		Long orderId,
+		Long paymentId,
+		Long memberId,
+		Long refundAmount
+	) {
+		Refund refund = createRequestedRefund(
+			refundId,
+			orderId,
+			paymentId,
+			memberId,
+			refundAmount
+		);
+
+		refund.recordPortOneRefundSuccess(
+			"cancel-123",
+			"SUCCEEDED",
+			LocalDateTime.now()
+		);
 
 		return refund;
 	}

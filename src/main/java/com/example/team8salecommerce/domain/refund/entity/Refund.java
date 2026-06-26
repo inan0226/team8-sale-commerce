@@ -2,6 +2,8 @@ package com.example.team8salecommerce.domain.refund.entity;
 
 import java.time.LocalDateTime;
 
+import com.example.team8salecommerce.global.exception.CustomException;
+import com.example.team8salecommerce.global.exception.ErrorCode;
 import com.example.team8salecommerce.global.util.BaseEntity;
 
 import jakarta.persistence.Column;
@@ -59,6 +61,30 @@ public class Refund extends BaseEntity {
 	@Column(length = 255)
 	private String failureReason;
 
+	/**
+	 * PortOne 결제 취소 ID
+	 *
+	 * PortOne 환불 API가 성공한 뒤 반환하는 취소 식별자이다.
+	 * 내부 DB 완료 처리 중 문제가 생겨도 운영자가 실제 환불 성공 건을 추적할 수 있게 저장한다.
+	 */
+	@Column(length = 100)
+	private String portOneCancellationId;
+
+	/**
+	 * PortOne 결제 취소 상태
+	 *
+	 * 예: SUCCEEDED
+	 */
+	@Column(length = 50)
+	private String portOneCancellationStatus;
+
+	/**
+	 * PortOne 환불 성공 정보 저장 시간
+	 *
+	 * 실제 PortOne 환불 성공 이후 내부 완료 처리 전에 기록한다.
+	 */
+	private LocalDateTime portOneCancelledAt;
+
 	private Refund(
 		Long orderId,
 		Long paymentId,
@@ -105,6 +131,38 @@ public class Refund extends BaseEntity {
 	}
 
 	/**
+	 * PortOne 환불 성공 정보를 저장한다.
+	 *
+	 * PortOne 환불 API는 성공했지만,
+	 * 내부 DB 완료 처리 중 문제가 생길 수 있으므로
+	 * 환불 완료 처리 전에 PortOne 성공 정보를 별도 상태로 먼저 남긴다.
+	 */
+	public void recordPortOneRefundSuccess(
+		String cancellationId,
+		String cancellationStatus,
+		LocalDateTime portOneCancelledAt
+	) {
+		if (!isRequested()) {
+			throw new CustomException(ErrorCode.REFUND_NOT_ALLOWED);
+		}
+
+		if (
+			cancellationId == null
+				|| cancellationId.isBlank()
+				|| cancellationStatus == null
+				|| cancellationStatus.isBlank()
+				|| portOneCancelledAt == null
+		) {
+			throw new CustomException(ErrorCode.INVALID_REQUEST);
+		}
+
+		this.portOneCancellationId = cancellationId;
+		this.portOneCancellationStatus = cancellationStatus;
+		this.portOneCancelledAt = portOneCancelledAt;
+		this.status = RefundStatus.PORTONE_REFUND_SUCCEEDED;
+	}
+
+	/**
 	 * 환불을 완료 상태로 변경한다.
 	 *
 	 * PG 환불 요청이 성공한 뒤 호출한다.
@@ -139,5 +197,12 @@ public class Refund extends BaseEntity {
 	 */
 	public boolean isRequested() {
 		return this.status == RefundStatus.REFUND_REQUEST;
+	}
+
+	/**
+	 * PortOne 환불은 성공했고 내부 완료 처리를 기다리는 상태인지 확인한다.
+	 */
+	public boolean isPortOneRefundSucceeded() {
+		return this.status == RefundStatus.PORTONE_REFUND_SUCCEEDED;
 	}
 }

@@ -9,6 +9,7 @@ import com.example.team8salecommerce.domain.refund.dto.RefundRequest;
 import com.example.team8salecommerce.domain.refund.dto.RefundResponse;
 import com.example.team8salecommerce.domain.refund.service.RefundCompleteTransactionService;
 import com.example.team8salecommerce.domain.refund.service.RefundFailTransactionService;
+import com.example.team8salecommerce.domain.refund.service.RefundPortOneSuccessTransactionService;
 import com.example.team8salecommerce.domain.refund.service.RefundProcessingContext;
 import com.example.team8salecommerce.domain.refund.service.RefundRequestTransactionService;
 import com.example.team8salecommerce.global.exception.CustomException;
@@ -36,6 +37,7 @@ public class RefundFacade {
 	private final PortOneRefundClient portOneRefundClient;
 	private final RefundCompleteTransactionService refundCompleteTransactionService;
 	private final RefundFailTransactionService refundFailTransactionService;
+	private final RefundPortOneSuccessTransactionService refundPortOneSuccessTransactionService;
 
 	/**
 	 * 환불 요청 처리
@@ -66,6 +68,11 @@ public class RefundFacade {
 
 			throw new CustomException(ErrorCode.REFUND_FAILED);
 		}
+
+		refundPortOneSuccessTransactionService.recordPortOneRefundSuccess(
+			context,
+			refundResult
+		);
 
 		return refundCompleteTransactionService.completeRefund(context);
 	}
