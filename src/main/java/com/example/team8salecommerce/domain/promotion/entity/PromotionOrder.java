@@ -187,6 +187,21 @@ public class PromotionOrder extends BaseEntity {
 	}
 
 	/**
+	 * 환불 요청 실패 후 주문을 다시 결제 완료 상태로 되돌린다.
+	 *
+	 * PortOne 환불 요청이 실패한 경우,
+	 * 실제 결제 취소가 되지 않았으므로 주문 상태를 PAID로 복구한다.
+	 */
+	public void failRefundRequest() {
+		if (!isRefundRequested()) {
+			throw new CustomException(ErrorCode.INVALID_PROMOTION_ORDER_STATUS);
+		}
+
+		this.status = PromotionOrderStatus.PAID;
+		this.refundRequestedAt = null;
+	}
+
+	/**
 	 * 결제 대기 상태인지 확인한다.
 	 */
 	public boolean isWaiting() {
@@ -205,6 +220,13 @@ public class PromotionOrder extends BaseEntity {
 	 */
 	public boolean isRefundRequested() {
 		return status == PromotionOrderStatus.REFUND_REQUEST;
+	}
+
+	/**
+	 * 환불 완료 상태인지 확인한다.
+	 */
+	public boolean isRefunded() {
+		return status == PromotionOrderStatus.REFUNDED;
 	}
 
 	/**

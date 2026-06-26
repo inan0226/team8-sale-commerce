@@ -3,9 +3,14 @@ package com.example.team8salecommerce.domain.refund.repository;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.example.team8salecommerce.domain.refund.entity.Refund;
 import com.example.team8salecommerce.domain.refund.entity.RefundStatus;
+
+import jakarta.persistence.LockModeType;
 
 public interface RefundRepository extends JpaRepository<Refund, Long> {
 
@@ -30,4 +35,18 @@ public interface RefundRepository extends JpaRepository<Refund, Long> {
 	 * 환불 상세 조회에서 본인의 환불 내역인지 확인할 때 사용할 수 있다.
 	 */
 	Optional<Refund> findByIdAndMemberId(Long refundId, Long memberId);
+
+	/**
+	 * 환불 ID로 환불 정보를 조회하면서 쓰기 락을 획득한다.
+	 *
+	 * PortOne 환불 성공/실패 후 내부 환불 상태를 변경할 때
+	 * 같은 환불 row가 동시에 수정되지 않도록 보호한다.
+	 */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("""
+		select refund
+		from Refund refund
+		where refund.id = :id
+		""")
+	Optional<Refund> findByIdForUpdate(@Param("id") Long id);
 }
