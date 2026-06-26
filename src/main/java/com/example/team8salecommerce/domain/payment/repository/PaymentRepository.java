@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.example.team8salecommerce.domain.payment.entity.Payment;
+import com.example.team8salecommerce.domain.payment.entity.PaymentStatus;
 
 /**
  * 결제 Repository
@@ -35,4 +36,11 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	 * 결제 승인 API에서 중복 결제를 막을 때 사용할 수 있다.
 	 */
 	boolean existsByOrderIdAndStatus(Long orderId, com.example.team8salecommerce.domain.payment.entity.PaymentStatus status);
+
+	/**
+	 * 주문 ID와 결제 상태로 결제 정보를 조회한다.
+	 *
+	 * 환불 요청 시 결제 완료된 Payment만 환불 대상으로 사용하기 위해 필요하다.
+	 */
+	Optional<Payment> findByOrderIdAndStatus(Long orderId, PaymentStatus status);
 }
