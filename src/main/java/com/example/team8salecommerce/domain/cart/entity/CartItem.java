@@ -97,4 +97,10 @@ public class CartItem extends BaseEntity {
         return deletedAt != null;
     }
 
+    // 삭제된 장바구니 상품 복구
+    public void restore(int quantity) {
+        this.deletedAt = null;
+        this.quantity = quantity;
+    }
+
 }

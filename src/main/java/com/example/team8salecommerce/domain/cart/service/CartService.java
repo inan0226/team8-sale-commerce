@@ -60,11 +60,17 @@ public class CartService {
 
         // 이미 장바구니에 존재하는 상품인지 확인
         CartItem cartItem = cartItemRepository
-                .findByCartIdAndProductIdAndDeletedAtIsNull(
+                .findByCartIdAndProductId(
                         cart.getId(),
                         product.getId()
                 )
                 .map(existingCartItem -> {
+
+                    // 삭제된 상품이면 복구
+                    if (existingCartItem.getDeletedAt() != null) {
+                        existingCartItem.restore(request.quantity());
+                        return existingCartItem;
+                    }
 
                     // 동일 상품이면 수량 증가
                     existingCartItem.addQuantity(
