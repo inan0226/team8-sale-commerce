@@ -87,7 +87,7 @@ public class CartServiceTest {
         when(product.getId()).thenReturn(10L);
         when(product.getName()).thenReturn("키보드");
 
-        when(cartItemRepository.findByCartIdAndProductIdAndDeletedAtIsNull(
+        when(cartItemRepository.findByCartIdAndProductId(
                 any(),
                 any()
         )).thenReturn(Optional.empty());
@@ -153,7 +153,7 @@ public class CartServiceTest {
         when(product.getId()).thenReturn(10L);
 
 
-        when(cartItemRepository.findByCartIdAndProductIdAndDeletedAtIsNull(
+        when(cartItemRepository.findByCartIdAndProductId(
                 any(),
                 any()
         )).thenReturn(Optional.of(cartItem));
@@ -248,7 +248,7 @@ public class CartServiceTest {
 
         when(product.getId()).thenReturn(10L);
 
-        when(cartItemRepository.findByCartIdAndProductIdAndDeletedAtIsNull(
+        when(cartItemRepository.findByCartIdAndProductId(
                 any(),
                 any()
         )).thenReturn(Optional.empty());
