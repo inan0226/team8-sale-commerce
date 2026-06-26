@@ -21,7 +21,7 @@ import com.example.team8salecommerce.global.exception.ErrorCode;
 public class PortOneRestRefundClient implements PortOneRefundClient {
 
 	private static final String PORTONE_AUTHORIZATION_PREFIX = "PortOne ";
-	private static final String PORTONE_BASE_URL = "api.portone.io";
+	private static final String PORTONE_BASE_URL = "https://api.portone.io";
 	private static final String SUCCEEDED_STATUS = "SUCCEEDED";
 
 	private final RestClient restClient;
