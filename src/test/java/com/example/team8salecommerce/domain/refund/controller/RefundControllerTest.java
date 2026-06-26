@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -32,29 +33,35 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import com.example.team8salecommerce.domain.refund.dto.RefundRequest;
 import com.example.team8salecommerce.domain.refund.dto.RefundResponse;
 import com.example.team8salecommerce.domain.refund.facade.RefundFacade;
+import com.example.team8salecommerce.domain.refund.service.RefundQueryService;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.security.AuthMember;
 
 /**
  * RefundController 테스트
  *
- * 환불 요청 API의 HTTP 요청/응답과
+ * 환불 요청 API와 환불 상세 조회 API의 HTTP 요청/응답,
  * 요청 값 검증이 정상 동작하는지 확인한다.
  */
 class RefundControllerTest {
 
 	private MockMvc mockMvc;
 	private RefundFacade refundFacade;
+	private RefundQueryService refundQueryService;
 	private AuthMember authMember;
 
 	@BeforeEach
 	void setUp() {
 		refundFacade = mock(RefundFacade.class);
+		refundQueryService = mock(RefundQueryService.class);
 		authMember = mock(AuthMember.class);
 
 		when(authMember.memberId()).thenReturn(1L);
 
-		RefundController refundController = new RefundController(refundFacade);
+		RefundController refundController = new RefundController(
+			refundFacade,
+			refundQueryService
+		);
 
 		LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
 		validator.afterPropertiesSet();
@@ -112,6 +119,8 @@ class RefundControllerTest {
 			eq(orderId),
 			any(RefundRequest.class)
 		);
+
+		verifyNoInteractions(refundQueryService);
 	}
 
 	@Test
@@ -131,7 +140,7 @@ class RefundControllerTest {
 				.content(requestBody))
 			.andExpect(status().isBadRequest());
 
-		verifyNoInteractions(refundFacade);
+		verifyNoInteractions(refundFacade, refundQueryService);
 	}
 
 	@Test
@@ -150,7 +159,7 @@ class RefundControllerTest {
 				.content(requestBody))
 			.andExpect(status().isBadRequest());
 
-		verifyNoInteractions(refundFacade);
+		verifyNoInteractions(refundFacade, refundQueryService);
 	}
 
 	@Test
@@ -172,7 +181,51 @@ class RefundControllerTest {
 				.content(requestBody))
 			.andExpect(status().isBadRequest());
 
+		verifyNoInteractions(refundFacade, refundQueryService);
+	}
+
+	@Test
+	@DisplayName("환불 상세 조회 API 호출에 성공한다")
+	void getRefundSuccess() throws Exception {
+		// given
+		Long refundId = 1L;
+
+		RefundResponse response = new RefundResponse(
+			refundId,
+			10L,
+			20L,
+			7000L,
+			"REFUND_REQUEST",
+			null,
+			null,
+			LocalDateTime.now(),
+			null
+		);
+
+		when(refundQueryService.getRefund(1L, refundId))
+			.thenReturn(response);
+
+		// when & then
+		mockMvc.perform(get("/refunds/{refundId}", refundId))
+			.andExpect(status().isOk())
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("\"refundId\":1")))
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("\"orderId\":10")))
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("\"paymentId\":20")))
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("\"refundAmount\":7000")))
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("\"refundStatus\":\"REFUND_REQUEST\"")));
+
+		verify(refundQueryService).getRefund(1L, refundId);
 		verifyNoInteractions(refundFacade);
+	}
+
+	@Test
+	@DisplayName("환불 ID가 0이면 환불 상세 조회 API 호출에 실패한다")
+	void getRefundFailWhenRefundIdIsZero() throws Exception {
+		// when & then
+		mockMvc.perform(get("/refunds/{refundId}", 0))
+			.andExpect(status().isBadRequest());
+
+		verifyNoInteractions(refundFacade, refundQueryService);
 	}
 
 	/**
