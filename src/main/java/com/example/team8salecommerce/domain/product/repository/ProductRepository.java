@@ -20,5 +20,3 @@ where p.id = :id
 
     Page<Product> findByIsDeletedFalse(Pageable pageable);
 }
-
-

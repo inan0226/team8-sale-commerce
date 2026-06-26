@@ -8,4 +8,3 @@ public class CategoryFixture {
         return Category.create("전자제품");
     }
 }
-
