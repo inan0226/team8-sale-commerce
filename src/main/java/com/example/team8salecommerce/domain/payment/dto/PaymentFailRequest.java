@@ -3,6 +3,7 @@ package com.example.team8salecommerce.domain.payment.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 /**
  * 결제 실패 처리 요청 DTO
@@ -18,6 +19,7 @@ public record PaymentFailRequest(
 	 * 결제 실패 처리할 특가 주문 ID
 	 */
 	@NotNull(message = "주문 ID는 필수입니다.")
+	@Positive(message = "주문 ID는 0보다 커야 합니다.")
 	Long orderId,
 
 	/**
@@ -44,6 +46,7 @@ public record PaymentFailRequest(
 	 * 예: 카드 한도 초과, 사용자 결제 취소, PG 승인 실패 등
 	 */
 	@NotBlank(message = "결제 실패 사유는 필수입니다.")
+	@Size(max = 255, message = "결제 실패 사유는 255자 이하로 입력해야 합니다.")
 	String failureReason
 ) {
 }

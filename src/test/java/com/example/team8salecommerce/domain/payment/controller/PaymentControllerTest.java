@@ -178,4 +178,50 @@ class PaymentControllerTest {
 			}
 		};
 	}
+
+	@Test
+	@DisplayName("주문 ID가 0이면 결제 실패 처리 API 호출에 실패한다")
+	void failPaymentFailWhenOrderIdIsZero() throws Exception {
+		// given
+		String requestBody = """
+		{
+			"orderId": 0,
+			"portOnePaymentId": "payment-fail-123",
+			"amount": 14000,
+			"failureReason": "카드 한도 초과"
+		}
+		""";
+
+		// when & then
+		mockMvc.perform(post("/payments/fail")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(requestBody))
+			.andExpect(status().isBadRequest());
+
+		verifyNoInteractions(paymentFailFacade);
+	}
+
+	@Test
+	@DisplayName("결제 실패 사유가 255자를 초과하면 결제 실패 처리 API 호출에 실패한다")
+	void failPaymentFailWhenFailureReasonIsTooLong() throws Exception {
+		// given
+		String longFailureReason = "a".repeat(256);
+
+		String requestBody = """
+		{
+			"orderId": 10,
+			"portOnePaymentId": "payment-fail-123",
+			"amount": 14000,
+			"failureReason": "%s"
+		}
+		""".formatted(longFailureReason);
+
+		// when & then
+		mockMvc.perform(post("/payments/fail")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(requestBody))
+			.andExpect(status().isBadRequest());
+
+		verifyNoInteractions(paymentFailFacade);
+	}
 }
