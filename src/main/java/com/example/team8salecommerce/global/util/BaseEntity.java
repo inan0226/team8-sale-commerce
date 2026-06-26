@@ -22,16 +22,4 @@ public abstract class BaseEntity {
     @Column(nullable = false)
     private LocalDateTime modifiedAt;
 
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
-
-    // soft delete 처리
-    protected void delete() {
-        this.deletedAt = LocalDateTime.now();
-    }
-
-    // 삭제 여부 확인
-    public boolean isDeleted() {
-        return deletedAt != null;
-    }
 }

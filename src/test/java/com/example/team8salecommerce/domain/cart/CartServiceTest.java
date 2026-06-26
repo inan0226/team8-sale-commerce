@@ -15,7 +15,6 @@ import com.example.team8salecommerce.domain.product.entity.Product;
 import com.example.team8salecommerce.domain.product.repository.ProductRepository;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,20 +49,10 @@ public class CartServiceTest {
     @Mock
     private MemberRepository memberRepository;
 
-    // 해당 메서드로 모든 테스트에서 save()를 일일이 Mock할 필요 없음
-    @BeforeEach
-    void setUp() {
-        when(cartRepository.save(any(Cart.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        when(cartItemRepository.save(any(CartItem.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-    }
 
     @Test
     @DisplayName("장바구니에 상품을 담았습니다.")
     void addCartItem_success() {
-
 
         // given
         Long memberId = 1L;
@@ -98,13 +87,14 @@ public class CartServiceTest {
         when(product.getId()).thenReturn(10L);
         when(product.getName()).thenReturn("키보드");
 
-        when(cartItemRepository.findByCartIdAndProductId(
+        when(cartItemRepository.findByCartIdAndProductIdAndDeletedAtIsNull(
                 any(),
                 any()
         )).thenReturn(Optional.empty());
 
+        when(cartItemRepository.save(any(CartItem.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(product.getPrice()).thenReturn(10000L);
 
         // when
         CartItemResponse response =
@@ -112,7 +102,6 @@ public class CartServiceTest {
                         memberId,
                         request
                 );
-
         // then
         verify(cartItemRepository).save(any());
 
@@ -163,12 +152,12 @@ public class CartServiceTest {
 
         when(product.getId()).thenReturn(10L);
 
-        when(product.getPrice()).thenReturn(10000L);
 
-        when(cartItemRepository.findByCartIdAndProductId(
+        when(cartItemRepository.findByCartIdAndProductIdAndDeletedAtIsNull(
                 any(),
                 any()
         )).thenReturn(Optional.of(cartItem));
+
 
         // when
         cartService.addCartItem(
@@ -217,6 +206,7 @@ public class CartServiceTest {
         when(productRepository.findByIdAndIsDeletedFalse(10L))
                 .thenReturn(Optional.empty());
 
+
         // when & then
         assertThatThrownBy(() ->
                 cartService.addCartItem(
@@ -258,13 +248,18 @@ public class CartServiceTest {
 
         when(product.getId()).thenReturn(10L);
 
-        when(cartItemRepository.findByCartIdAndProductId(
+        when(cartItemRepository.findByCartIdAndProductIdAndDeletedAtIsNull(
                 any(),
                 any()
         )).thenReturn(Optional.empty());
 
 
-        when(product.getPrice()).thenReturn(10000L);
+        when(cartRepository.save(any(Cart.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(cartItemRepository.save(any(CartItem.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
 
         // when
         cartService.addCartItem(
@@ -312,8 +307,9 @@ public class CartServiceTest {
         when(memberRepository.findById(memberId))
                 .thenReturn(Optional.of(member));
 
-        when(cartItemRepository.findByCartId(1L))
+        when(cartItemRepository.findActiveCartItems(1L))
                 .thenReturn(List.of(cartItem));
+
 
         // when
         CartResponse response =
@@ -362,8 +358,10 @@ public class CartServiceTest {
         when(cartItemRepository.findByIdAndDeletedAtIsNull(cartItemId))
                 .thenReturn(Optional.of(cartItem));
 
+        when(member.getId())
+                .thenReturn(memberId);
+
         when(product.getId()).thenReturn(10L);
-        when(product.getPrice()).thenReturn(10000L);
         when(product.getName()).thenReturn("키보드");
 
         // when
@@ -373,7 +371,6 @@ public class CartServiceTest {
                         cartItemId,
                         request
                 );
-
         // then
         assertThat(cartItem.getQuantity()).isEqualTo(5);
         assertThat(response.quantity()).isEqualTo(5);
@@ -399,6 +396,9 @@ public class CartServiceTest {
 
         when(cartItemRepository.findByIdAndDeletedAtIsNull(cartItemId))
                 .thenReturn(Optional.empty());
+
+        when(member.getId())
+                .thenReturn(memberId);
 
         // when & then
         assertThatThrownBy(() ->
@@ -444,6 +444,9 @@ public class CartServiceTest {
         when(cartItemRepository.findByIdAndDeletedAtIsNull(1L))
                 .thenReturn(Optional.of(cartItem));
 
+        when(member.getId())
+                .thenReturn(memberId);
+
         // when & then
         assertThatThrownBy(() ->
                 cartService.updateCartItemQuantity(
@@ -485,6 +488,9 @@ public class CartServiceTest {
         when(cartItemRepository.findByIdAndDeletedAtIsNull(1L))
                 .thenReturn(Optional.of(cartItem));
 
+        when(member.getId())
+                .thenReturn(memberId);
+
         // when
         cartService.deleteCartItem(
                 memberId,
@@ -514,6 +520,9 @@ public class CartServiceTest {
 
         when(cartItemRepository.findByIdAndDeletedAtIsNull(1L))
                 .thenReturn(Optional.empty());
+
+        when(member.getId())
+                .thenReturn(memberId);
 
         // when & then
         assertThatThrownBy(() ->
@@ -557,6 +566,9 @@ public class CartServiceTest {
 
         when(cartItemRepository.findByIdAndDeletedAtIsNull(1L))
                 .thenReturn(Optional.of(cartItem));
+
+        when(member.getId())
+                .thenReturn(memberId);
 
         // when & then
         assertThatThrownBy(() ->

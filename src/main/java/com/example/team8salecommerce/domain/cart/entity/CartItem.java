@@ -8,6 +8,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 // 하나의 장바구니에 여러 상품이 담길 수 있음
 // 동일 상품은 하나의 CartItem으로 관리, 수량만 증가하는 방식 사용
 @Entity
@@ -49,6 +51,7 @@ public class CartItem extends BaseEntity {
     )
     private Product product;
 
+
     protected CartItem(
             Cart cart,
             Product product,
@@ -82,9 +85,16 @@ public class CartItem extends BaseEntity {
         this.quantity += quantity;
     }
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     // 장바구니 상품 삭제
     public void delete() {
-        super.delete();
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 
 }

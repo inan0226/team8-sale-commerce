@@ -39,6 +39,7 @@ public class CartService {
             Long memberId,
             AddCartItemRequest request
     ) {
+
         // 회원 조회
         Member member = getMember(memberId);
 
@@ -59,7 +60,7 @@ public class CartService {
 
         // 이미 장바구니에 존재하는 상품인지 확인
         CartItem cartItem = cartItemRepository
-                .findByCartIdAndProductId(
+                .findByCartIdAndProductIdAndDeletedAtIsNull(
                         cart.getId(),
                         product.getId()
                 )
@@ -113,7 +114,7 @@ public class CartService {
         Cart cart = optionalCart.get();
         // 장바구니 상품 목록 조회
         List<CartItemDetailResponse> items =
-                cartItemRepository.findByCartId(cart.getId())
+                cartItemRepository.findActiveCartItems(cart.getId())
                         .stream()
                         .map(CartItemDetailResponse::from)
                         .toList();

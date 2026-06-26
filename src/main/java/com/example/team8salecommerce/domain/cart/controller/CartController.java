@@ -2,6 +2,7 @@ package com.example.team8salecommerce.domain.cart.controller;
 
 
 import com.example.team8salecommerce.domain.cart.dto.request.AddCartItemRequest;
+import com.example.team8salecommerce.domain.cart.dto.request.UpdateCartItemRequest;
 import com.example.team8salecommerce.domain.cart.dto.response.CartItemResponse;
 import com.example.team8salecommerce.domain.cart.dto.response.CartResponse;
 import com.example.team8salecommerce.domain.cart.service.CartService;
@@ -44,5 +45,40 @@ public class CartController {
         CartResponse response =
                 cartService.getCart(authMember.memberId());
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // 장바구니 상품 수량 변경
+    @PatchMapping("/items/{cartItemId}")
+    public ResponseEntity<ApiResponse<CartItemResponse>>
+    updateCartItemQuantity(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long cartItemId,
+            @Valid @RequestBody UpdateCartItemRequest request
+    ) {
+
+        CartItemResponse response =
+                cartService.updateCartItemQuantity(
+                        authMember.memberId(),
+                        cartItemId,
+                        request
+                );
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // 장바구니 상품 삭제
+    @DeleteMapping("/items/{cartItemId}")
+    public ResponseEntity<ApiResponse<Void>>
+    deleteCartItem(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long cartItemId
+    ) {
+
+        cartService.deleteCartItem(
+                authMember.memberId(),
+                cartItemId
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }
