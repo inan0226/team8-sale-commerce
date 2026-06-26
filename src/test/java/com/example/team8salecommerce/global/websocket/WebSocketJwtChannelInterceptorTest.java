@@ -44,7 +44,7 @@ class WebSocketJwtChannelInterceptorTest {
 
         interceptor.preSend(message, mock(MessageChannel.class));
 
-        verify(chatService).validateRoomAccess(1L, 10L);
+        verify(chatService).validateRoomAccess(1L, Role.USER, 10L);
     }
 
     @Test

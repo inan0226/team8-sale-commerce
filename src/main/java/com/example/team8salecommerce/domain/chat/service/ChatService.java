@@ -55,8 +55,8 @@ public class ChatService {
                 .toList();
     }
 
-    public List<ChatMessageResponse> getMessages(Long memberId, Long roomId) {
-        validateRoomAccess(memberId, roomId);
+    public List<ChatMessageResponse> getMessages(Long memberId, Role role, Long roomId) {
+        validateRoomAccess(memberId, role, roomId);
 
         return chatMessageRepository.findAllByChatRoomIdOrderByCreatedAtAsc(roomId)
                 .stream()
@@ -70,7 +70,7 @@ public class ChatService {
             throw new CustomException(ErrorCode.CHAT_MESSAGE_EMPTY);
         }
 
-        ChatRoom chatRoom = findAccessibleRoom(memberId, roomId);
+        ChatRoom chatRoom = findAccessibleRoom(memberId, Role.USER, roomId);
         if (chatRoom.isClosed()) {
             throw new CustomException(ErrorCode.CHAT_ROOM_CLOSED);
         }
@@ -89,8 +89,8 @@ public class ChatService {
         }
     }
 
-    public void validateRoomAccess(Long memberId, Long roomId) {
-        findAccessibleRoom(memberId, roomId);
+    public void validateRoomAccess(Long memberId, Role role, Long roomId) {
+        findAccessibleRoom(memberId, role, roomId);
     }
 
     @Transactional
@@ -107,11 +107,11 @@ public class ChatService {
         return ChatRoomResponse.from(chatRoom);
     }
 
-    private ChatRoom findAccessibleRoom(Long memberId, Long roomId) {
+    private ChatRoom findAccessibleRoom(Long memberId, Role role, Long roomId) {
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
 
-        if (!chatRoom.getCreatedBy().getId().equals(memberId)) {
+        if (role != Role.ADMIN && !chatRoom.getCreatedBy().getId().equals(memberId)) {
             throw new CustomException(ErrorCode.CHAT_ACCESS_DENIED);
         }
 

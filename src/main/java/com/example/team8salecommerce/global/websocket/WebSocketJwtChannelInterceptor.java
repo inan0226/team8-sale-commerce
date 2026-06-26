@@ -90,7 +90,7 @@ public class WebSocketJwtChannelInterceptor implements ChannelInterceptor {
         Matcher matcher = CHAT_ROOM_TOPIC_PATTERN.matcher(destination);
         if (matcher.matches()) {
             AuthMember authMember = resolveAuthMember(principal);
-            chatService.validateRoomAccess(authMember.memberId(), Long.valueOf(matcher.group(1)));
+            chatService.validateRoomAccess(authMember.memberId(), authMember.role(), Long.valueOf(matcher.group(1)));
         }
     }
 

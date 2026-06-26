@@ -87,11 +87,26 @@ class ChatServiceTest {
         when(chatRoomRepository.findById(roomId))
                 .thenReturn(Optional.of(chatRoom));
 
-        assertThatThrownBy(() -> chatService.getMessages(otherMemberId, roomId))
+        assertThatThrownBy(() -> chatService.getMessages(otherMemberId, Role.USER, roomId))
                 .isInstanceOf(CustomException.class)
                 .hasMessage(ErrorCode.CHAT_ACCESS_DENIED.getMessage());
 
         verify(chatMessageRepository, never()).findAllByChatRoomIdOrderByCreatedAtAsc(any());
+    }
+
+    @Test
+    void getMessages_adminCanReadMembersRoom() {
+        Long ownerId = 1L;
+        Long adminId = 99L;
+        Long roomId = 10L;
+        ChatRoom chatRoom = ChatRoom.create("general", member(ownerId));
+
+        when(chatRoomRepository.findById(roomId))
+                .thenReturn(Optional.of(chatRoom));
+        when(chatMessageRepository.findAllByChatRoomIdOrderByCreatedAtAsc(roomId))
+                .thenReturn(List.of());
+
+        assertThat(chatService.getMessages(adminId, Role.ADMIN, roomId)).isEmpty();
     }
 
     @Test

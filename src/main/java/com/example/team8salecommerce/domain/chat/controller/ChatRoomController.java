@@ -56,7 +56,9 @@ public class ChatRoomController {
     ) {
         validateAuthenticatedMember(authMember);
 
-        return ResponseEntity.ok(ApiResponse.success(chatService.getMessages(authMember.memberId(), chatRoomId)));
+        return ResponseEntity.ok(ApiResponse.success(
+                chatService.getMessages(authMember.memberId(), authMember.role(), chatRoomId)
+        ));
     }
 
     @PatchMapping("/{chatRoomId}/status")
