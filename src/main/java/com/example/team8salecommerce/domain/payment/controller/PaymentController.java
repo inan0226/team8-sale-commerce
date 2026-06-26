@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.team8salecommerce.domain.payment.dto.PaymentConfirmRequest;
 import com.example.team8salecommerce.domain.payment.dto.PaymentConfirmResponse;
+import com.example.team8salecommerce.domain.payment.dto.PaymentFailRequest;
+import com.example.team8salecommerce.domain.payment.dto.PaymentFailResponse;
+import com.example.team8salecommerce.domain.payment.facade.PaymentFailFacade;
 import com.example.team8salecommerce.domain.payment.service.PaymentService;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
@@ -31,16 +34,13 @@ import lombok.RequiredArgsConstructor;
 public class PaymentController {
 
 	private final PaymentService paymentService;
+	private final PaymentFailFacade paymentFailFacade;
 
 	/**
 	 * 결제 승인 API
 	 *
 	 * 사용자가 PortOne 결제를 완료한 뒤,
 	 * 클라이언트가 서버에 결제 승인을 요청할 때 호출한다.
-	 *
-	 * 서버는 인증된 회원의 주문인지 확인하고,
-	 * 주문 금액과 결제 요청 금액이 일치하는지 검증한 뒤
-	 * 결제 정보를 저장하고 주문 상태를 PAID로 변경한다.
 	 */
 	@PostMapping("/confirm")
 	public ResponseEntity<ApiResponse<PaymentConfirmResponse>> confirmPayment(
@@ -50,7 +50,8 @@ public class PaymentController {
 		validateAuthenticatedMember(authMember);
 
 		PaymentConfirmResponse responseDto = paymentService.confirmPayment(
-			authMember.memberId(), request
+			authMember.memberId(),
+			request
 		);
 
 		ResponseEntity<ApiResponse<PaymentConfirmResponse>> response = ResponseEntity
@@ -61,11 +62,34 @@ public class PaymentController {
 	}
 
 	/**
-	 * 인증된 회원 정보를 검증한다.
+	 * 결제 실패 처리 API
 	 *
-	 * 보안 필터에서 인증을 처리하더라도,
-	 * Controller에서 authMember가 null인 경우를 한 번 더 방어해
-	 * NullPointerException 대신 공통 인증 예외로 응답하도록 한다.
+	 * PortOne 결제 실패 후 클라이언트가 서버에 실패 처리를 요청할 때 호출한다.
+	 *
+	 * Controller는 HTTP 요청/응답만 담당하고,
+	 * 실제 결제 실패 처리 흐름은 PaymentFailFacade에 위임한다.
+	 */
+	@PostMapping("/fail")
+	public ResponseEntity<ApiResponse<PaymentFailResponse>> failPayment(
+		@AuthenticationPrincipal AuthMember authMember,
+		@Valid @RequestBody PaymentFailRequest request
+	) {
+		validateAuthenticatedMember(authMember);
+
+		PaymentFailResponse responseDto = paymentFailFacade.failPayment(
+			authMember.memberId(),
+			request
+		);
+
+		ResponseEntity<ApiResponse<PaymentFailResponse>> response = ResponseEntity
+			.status(HttpStatus.OK)
+			.body(ApiResponse.success(responseDto));
+
+		return response;
+	}
+
+	/**
+	 * 인증된 회원 정보를 검증한다.
 	 */
 	private void validateAuthenticatedMember(AuthMember authMember) {
 		if (authMember == null) {
