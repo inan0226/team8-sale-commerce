@@ -58,6 +58,15 @@ class WebSocketJwtChannelInterceptorTest {
                 .hasMessage(ErrorCode.UNAUTHORIZED.getMessage());
     }
 
+    @Test
+    void subscribe_invalidChatDestinationFails() {
+        Message<?> message = subscribeMessage(1L, "/sub/chat/room/10");
+
+        assertThatThrownBy(() -> interceptor.preSend(message, mock(MessageChannel.class)))
+                .isInstanceOf(CustomException.class)
+                .hasMessage(ErrorCode.INVALID_REQUEST.getMessage());
+    }
+
     private Message<?> subscribeMessage(Long memberId, String destination) {
         AuthMember authMember = new AuthMember(memberId, "member@example.com", Role.USER);
         UsernamePasswordAuthenticationToken authentication =

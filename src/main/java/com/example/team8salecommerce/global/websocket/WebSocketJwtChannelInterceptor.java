@@ -91,6 +91,11 @@ public class WebSocketJwtChannelInterceptor implements ChannelInterceptor {
         if (matcher.matches()) {
             AuthMember authMember = resolveAuthMember(principal);
             chatService.validateRoomAccess(authMember.memberId(), authMember.role(), Long.valueOf(matcher.group(1)));
+            return;
+        }
+
+        if (destination.startsWith("/sub/chat/")) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
     }
 
