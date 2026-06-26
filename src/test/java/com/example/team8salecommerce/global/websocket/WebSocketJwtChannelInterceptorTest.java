@@ -40,22 +40,31 @@ class WebSocketJwtChannelInterceptorTest {
 
     @Test
     void subscribe_validatesChatRoomAccess() {
-        Message<?> message = subscribeMessage(1L, "/sub/chat/room/10");
+        Message<?> message = subscribeMessage(1L, "/sub/chat/rooms/10");
 
         interceptor.preSend(message, mock(MessageChannel.class));
 
-        verify(chatService).validateRoomAccess(1L, 10L);
+        verify(chatService).validateRoomAccess(1L, Role.USER, 10L);
     }
 
     @Test
     void subscribe_withoutAuthenticationFails() {
         StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
-        accessor.setDestination("/sub/chat/room/10");
+        accessor.setDestination("/sub/chat/rooms/10");
         Message<?> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
 
         assertThatThrownBy(() -> interceptor.preSend(message, mock(MessageChannel.class)))
                 .isInstanceOf(CustomException.class)
                 .hasMessage(ErrorCode.UNAUTHORIZED.getMessage());
+    }
+
+    @Test
+    void subscribe_invalidChatDestinationFails() {
+        Message<?> message = subscribeMessage(1L, "/sub/chat/room/10");
+
+        assertThatThrownBy(() -> interceptor.preSend(message, mock(MessageChannel.class)))
+                .isInstanceOf(CustomException.class)
+                .hasMessage(ErrorCode.INVALID_REQUEST.getMessage());
     }
 
     private Message<?> subscribeMessage(Long memberId, String destination) {

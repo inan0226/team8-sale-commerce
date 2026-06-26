@@ -25,7 +25,7 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class WebSocketJwtChannelInterceptor implements ChannelInterceptor {
 
-    private static final Pattern CHAT_ROOM_TOPIC_PATTERN = Pattern.compile("^/sub/chat/room/(\\d+)$");
+    private static final Pattern CHAT_ROOM_TOPIC_PATTERN = Pattern.compile("^/sub/chat/rooms/(\\d+)$");
 
     private final JwtTokenProvider jwtTokenProvider;
     private final MemberRepository memberRepository;
@@ -90,7 +90,12 @@ public class WebSocketJwtChannelInterceptor implements ChannelInterceptor {
         Matcher matcher = CHAT_ROOM_TOPIC_PATTERN.matcher(destination);
         if (matcher.matches()) {
             AuthMember authMember = resolveAuthMember(principal);
-            chatService.validateRoomAccess(authMember.memberId(), Long.valueOf(matcher.group(1)));
+            chatService.validateRoomAccess(authMember.memberId(), authMember.role(), Long.valueOf(matcher.group(1)));
+            return;
+        }
+
+        if (destination.startsWith("/sub/chat/")) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
     }
 

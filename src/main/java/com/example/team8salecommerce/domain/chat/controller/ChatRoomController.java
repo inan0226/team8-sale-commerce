@@ -3,7 +3,9 @@ package com.example.team8salecommerce.domain.chat.controller;
 import com.example.team8salecommerce.domain.chat.dto.ChatMessageResponse;
 import com.example.team8salecommerce.domain.chat.dto.ChatRoomResponse;
 import com.example.team8salecommerce.domain.chat.dto.CreateChatRoomRequest;
+import com.example.team8salecommerce.domain.chat.dto.UpdateChatRoomStatusRequest;
 import com.example.team8salecommerce.domain.chat.service.ChatService;
+import com.example.team8salecommerce.domain.member.entity.Role;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
 import com.example.team8salecommerce.global.response.ApiResponse;
@@ -14,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,7 +36,7 @@ public class ChatRoomController {
     ) {
         validateAuthenticatedMember(authMember);
 
-        return ResponseEntity.ok(ApiResponse.success(chatService.getMyRooms(authMember.memberId())));
+        return ResponseEntity.ok(ApiResponse.success(chatService.getRooms(authMember.memberId(), authMember.role())));
     }
 
     @PostMapping
@@ -53,12 +56,32 @@ public class ChatRoomController {
     ) {
         validateAuthenticatedMember(authMember);
 
-        return ResponseEntity.ok(ApiResponse.success(chatService.getMessages(authMember.memberId(), chatRoomId)));
+        return ResponseEntity.ok(ApiResponse.success(
+                chatService.getMessages(authMember.memberId(), authMember.role(), chatRoomId)
+        ));
+    }
+
+    @PatchMapping("/{chatRoomId}/status")
+    public ResponseEntity<ApiResponse<ChatRoomResponse>> updateStatus(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long chatRoomId,
+            @Valid @RequestBody UpdateChatRoomStatusRequest request
+    ) {
+        validateAuthenticatedMember(authMember);
+        validateAdmin(authMember);
+
+        return ResponseEntity.ok(ApiResponse.success(chatService.updateRoomStatus(chatRoomId, request.status())));
     }
 
     private void validateAuthenticatedMember(AuthMember authMember) {
         if (authMember == null) {
             throw new CustomException(ErrorCode.UNAUTHORIZED);
+        }
+    }
+
+    private void validateAdmin(AuthMember authMember) {
+        if (authMember.role() != Role.ADMIN) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
         }
     }
 }
