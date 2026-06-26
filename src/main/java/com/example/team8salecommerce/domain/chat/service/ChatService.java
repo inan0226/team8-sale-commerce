@@ -31,6 +31,9 @@ public class ChatService {
 
     @Transactional
     public ChatRoomResponse createRoom(Long memberId, CreateChatRoomRequest request) {
+        Member member = memberRepository.findByIdForUpdate(memberId)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
         ChatRoom existingRoom = chatRoomRepository
                 .findFirstByCreatedByIdAndStatusNotOrderByCreatedAtDesc(memberId, ChatRoomStatus.CLOSED)
                 .orElse(null);
@@ -38,7 +41,6 @@ public class ChatService {
             return ChatRoomResponse.from(existingRoom);
         }
 
-        Member member = findMember(memberId);
         ChatRoom chatRoom = chatRoomRepository.save(ChatRoom.create(request.name(), member));
 
         return ChatRoomResponse.from(chatRoom);

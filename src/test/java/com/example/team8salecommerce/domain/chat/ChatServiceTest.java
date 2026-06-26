@@ -49,8 +49,10 @@ class ChatServiceTest {
     @Test
     void createRoom_returnsExistingActiveRoom() {
         Long memberId = 1L;
-        ChatRoom existingRoom = ChatRoom.create("general", member(memberId));
+        Member member = member(memberId);
+        ChatRoom existingRoom = ChatRoom.create("general", member);
 
+        when(memberRepository.findByIdForUpdate(memberId)).thenReturn(Optional.of(member));
         when(chatRoomRepository.findFirstByCreatedByIdAndStatusNotOrderByCreatedAtDesc(
                 memberId,
                 ChatRoomStatus.CLOSED
