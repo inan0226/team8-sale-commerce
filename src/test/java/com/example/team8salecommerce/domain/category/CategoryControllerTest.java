@@ -13,6 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import org.redisson.api.RedissonClient;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -33,10 +34,13 @@ class CategoryControllerTest {
     @MockitoBean
     private CategoryService categoryService;
 
+    @MockitoBean
+    private RedissonClient redissonClient;
+
     @Test
     @DisplayName("카테고리별 상품 목록 조회 성공")
     void getCategoryProducts_success() throws Exception {
-        CategoryProductResponse response = new CategoryProductResponse(List.of());
+        CategoryProductResponse response = new CategoryProductResponse(List.of(), 0, 20, 0, 0L);
 
         when(categoryService.getCategoryProducts(eq(1L), any()))
                 .thenReturn(response);

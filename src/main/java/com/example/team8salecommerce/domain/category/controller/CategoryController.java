@@ -23,9 +23,9 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
-    @GetMapping("/categories/{category}/products")
+    @GetMapping("/categories/{categoryId}/products")
     public ResponseEntity<ApiResponse<CategoryProductResponse>> getCategoryProducts(
-            @PathVariable("category") @Min(1) Long categoryId,
+            @PathVariable @Min(1) Long categoryId,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
     ) {

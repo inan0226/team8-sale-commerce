@@ -63,6 +63,10 @@ class CategoryServiceTest {
         assertThat(response.content()).hasSize(1);
         assertThat(response.content().get(0).id()).isEqualTo(100L);
         assertThat(response.content().get(0).name()).isEqualTo("상품명");
+        assertThat(response.page()).isEqualTo(0);
+        assertThat(response.size()).isEqualTo(20);
+        assertThat(response.totalPages()).isEqualTo(1);
+        assertThat(response.totalElements()).isEqualTo(1L);
 
         verify(categoryRepository).existsById(categoryId);
         verify(productRepository).findByCategoryIdAndIsDeletedFalse(categoryId, pageable);

@@ -33,6 +33,12 @@ public class CategoryService {
                 .map(CategoryProductDetailResponse::from)
                 .toList();
 
-        return new CategoryProductResponse(content);
+        return new CategoryProductResponse(
+                content,
+                productPage.getNumber(),
+                productPage.getSize(),
+                productPage.getTotalPages(),
+                productPage.getTotalElements()
+        );
     }
 }
