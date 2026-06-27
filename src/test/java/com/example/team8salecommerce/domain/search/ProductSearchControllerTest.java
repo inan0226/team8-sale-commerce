@@ -2,6 +2,7 @@ package com.example.team8salecommerce.domain.search;
 
 import com.example.team8salecommerce.domain.search.dto.ProductSearchResponse;
 import com.example.team8salecommerce.domain.search.service.ProductSearchService;
+import com.example.team8salecommerce.domain.search.service.SearchKeywordService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RedissonClient;
@@ -15,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -30,6 +32,9 @@ class ProductSearchControllerTest {
 
     @MockitoBean
     private ProductSearchService productSearchService;
+
+    @MockitoBean
+    private SearchKeywordService searchKeywordService;
 
     @MockitoBean
     private RedissonClient redissonClient;
@@ -56,6 +61,8 @@ class ProductSearchControllerTest {
                 .andExpect(jsonPath("$.data.size").value(20))
                 .andExpect(jsonPath("$.data.totalPages").value(1))
                 .andExpect(jsonPath("$.data.totalElements").value(0));
+
+        verify(searchKeywordService).incrementKeywordCount("에어팟");
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.example.team8salecommerce.global.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -31,6 +32,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/signup", "/auth/login").permitAll()
                         .requestMatchers("/ws/chat", "/ws/chat/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/products", "/products/*", "/products/search").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/categories/*/products").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/search-keywords/top").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

@@ -3,6 +3,7 @@ package com.example.team8salecommerce.domain.search.controller;
 import com.example.team8salecommerce.domain.product.exception.ProductException;
 import com.example.team8salecommerce.domain.search.dto.ProductSearchResponse;
 import com.example.team8salecommerce.domain.search.service.ProductSearchService;
+import com.example.team8salecommerce.domain.search.service.SearchKeywordService;
 import com.example.team8salecommerce.global.exception.ErrorCode;
 import com.example.team8salecommerce.global.response.ApiResponse;
 import jakarta.validation.constraints.Max;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProductSearchController {
 
     private final ProductSearchService productSearchService;
+    private final SearchKeywordService searchKeywordService;
 
     @GetMapping("/products/search")
     public ResponseEntity<ApiResponse<ProductSearchResponse>> searchProducts(
@@ -36,6 +38,10 @@ public class ProductSearchController {
 
         if (minPrice != null && maxPrice != null && minPrice > maxPrice) {
             throw new ProductException(ErrorCode.INVALID_PRICE_RANGE);
+        }
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            searchKeywordService.incrementKeywordCount(keyword);
         }
 
         ProductSearchResponse response = productSearchService.searchProducts(
