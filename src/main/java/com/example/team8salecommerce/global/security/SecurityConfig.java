@@ -31,6 +31,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/signup", "/auth/login").permitAll()
                         .requestMatchers("/ws/chat", "/ws/chat/**").permitAll()
+                        .requestMatchers("/search/**", "/products/**", "/categories/**", "/search-keywords/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

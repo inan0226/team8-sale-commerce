@@ -58,7 +58,8 @@ public enum ErrorCode {
     CHAT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 채팅방에 접근할 수 없습니다."),
     CHAT_MESSAGE_EMPTY(HttpStatus.BAD_REQUEST, "메시지 내용이 비어 있습니다."),
     CHAT_ROOM_CLOSED(HttpStatus.BAD_REQUEST, "종료된 채팅방에는 메시지를 보낼 수 없습니다."),
-    INVALID_CHAT_ROOM_STATUS(HttpStatus.BAD_REQUEST, "채팅방 상태가 올바르지 않습니다.");
+    INVALID_CHAT_ROOM_STATUS(HttpStatus.BAD_REQUEST, "채팅방 상태가 올바르지 않습니다."),
+    SEARCH_KEYWORD_READ_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "인기 검색어 조회에 실패했습니다.");
 
     private final HttpStatus status;
     private final String message;

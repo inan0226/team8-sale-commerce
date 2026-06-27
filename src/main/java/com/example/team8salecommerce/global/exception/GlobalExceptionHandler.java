@@ -51,6 +51,24 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(message));
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(
+            org.springframework.web.servlet.resource.NoResourceFoundException exception
+    ) {
+        return ResponseEntity
+                .status(org.springframework.http.HttpStatus.NOT_FOUND)
+                .body(ApiResponse.fail("존재하지 않는 API 경로입니다."));
+    }
+
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodArgumentTypeMismatchException(
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException exception
+    ) {
+        return ResponseEntity
+                .status(org.springframework.http.HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.fail("요청 파라미터의 타입이 올바르지 않습니다."));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception exception) {
 
