@@ -48,12 +48,14 @@ class SearchKeywordControllerTest {
         // when & then
         mockMvc.perform(get("/search-keywords/top"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].rank").value(1))
-                .andExpect(jsonPath("$[0].keyword").value("에어팟"))
-                .andExpect(jsonPath("$[0].count").value(523))
-                .andExpect(jsonPath("$[1].rank").value(2))
-                .andExpect(jsonPath("$[1].keyword").value("맥북"))
-                .andExpect(jsonPath("$[1].count").value(312));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("인기 검색어 조회 성공"))
+                .andExpect(jsonPath("$.data[0].rank").value(1))
+                .andExpect(jsonPath("$.data[0].keyword").value("에어팟"))
+                .andExpect(jsonPath("$.data[0].count").value(523))
+                .andExpect(jsonPath("$.data[1].rank").value(2))
+                .andExpect(jsonPath("$.data[1].keyword").value("맥북"))
+                .andExpect(jsonPath("$.data[1].count").value(312));
     }
 
     @Test

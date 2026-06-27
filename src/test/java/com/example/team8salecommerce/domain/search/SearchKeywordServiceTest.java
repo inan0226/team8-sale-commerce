@@ -45,7 +45,7 @@ class SearchKeywordServiceTest {
         searchKeywordService.incrementKeywordCount("에어팟");
 
         // then
-        verify(zSetOperations).incrementScore("search:keywords", "에어팟", 1.0);
+        verify(zSetOperations).incrementScore("popular:search", "에어팟", 1.0);
     }
 
     @Test
@@ -59,7 +59,7 @@ class SearchKeywordServiceTest {
         // when & then (예외가 던져지지 않고 처리되어야 함)
         searchKeywordService.incrementKeywordCount("에어팟");
 
-        verify(zSetOperations).incrementScore("search:keywords", "에어팟", 1.0);
+        verify(zSetOperations).incrementScore("popular:search", "에어팟", 1.0);
     }
 
     @Test
@@ -86,7 +86,7 @@ class SearchKeywordServiceTest {
             public int compareTo(ZSetOperations.TypedTuple<String> o) { return 0; }
         });
 
-        when(zSetOperations.reverseRangeWithScores("search:keywords", 0, 9)).thenReturn(mockTuples);
+        when(zSetOperations.reverseRangeWithScores("popular:search", 0, 9)).thenReturn(mockTuples);
 
         // when
         List<SearchKeywordResponse> result = searchKeywordService.getTopKeywords();
@@ -106,7 +106,7 @@ class SearchKeywordServiceTest {
     void getTopKeywords_redisError_throwsException() {
         // given
         when(stringRedisTemplate.opsForZSet()).thenReturn(zSetOperations);
-        when(zSetOperations.reverseRangeWithScores("search:keywords", 0, 9))
+        when(zSetOperations.reverseRangeWithScores("popular:search", 0, 9))
                 .thenThrow(new RuntimeException("Redis connection error"));
 
         // when & then

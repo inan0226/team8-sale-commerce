@@ -18,7 +18,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class SearchKeywordService {
 
-    private static final String KEYWORD_RANKING_KEY = "search:keywords";
+    private static final String KEYWORD_RANKING_KEY = "popular:search";
     private final StringRedisTemplate stringRedisTemplate;
 
     public void incrementKeywordCount(String keyword) {

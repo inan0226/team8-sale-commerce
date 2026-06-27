@@ -23,7 +23,7 @@ public class ProductSearchController {
     private final ProductSearchService productSearchService;
     private final SearchKeywordService searchKeywordService;
 
-    @GetMapping("/search/products")
+    @GetMapping("/products/search")
     public ResponseEntity<ApiResponse<ProductSearchResponse>> searchProducts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
