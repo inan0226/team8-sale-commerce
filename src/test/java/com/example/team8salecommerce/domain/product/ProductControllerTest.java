@@ -5,6 +5,7 @@ import com.example.team8salecommerce.domain.product.service.ProductService;
 import com.example.team8salecommerce.global.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -26,6 +27,9 @@ class ProductControllerTest {
 
     @MockitoBean
     private ProductService productService;
+
+    @MockitoBean
+    private RedissonClient redissonClient;
 
     @Test
     @DisplayName("삭제된 상품 조회 시 404")
