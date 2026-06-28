@@ -1,6 +1,7 @@
 package com.example.team8salecommerce.domain.search;
 
 import com.example.team8salecommerce.domain.search.dto.SearchKeywordResponse;
+import com.example.team8salecommerce.domain.search.dto.SearchKeywordStatsResponse;
 import com.example.team8salecommerce.domain.search.service.SearchKeywordService;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 
@@ -34,11 +36,15 @@ class SearchKeywordServiceTest {
     @Mock
     private ZSetOperations<String, String> zSetOperations;
 
+    @Mock
+    private HashOperations<String, Object, Object> hashOperations;
+
     @Test
-    @DisplayName("검색어 스코어 증가 성공")
+    @DisplayName("검색어 스코어 및 시간 증가 성공")
     void incrementKeywordCount_success() {
         // given
         when(stringRedisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
         when(zSetOperations.incrementScore(anyString(), anyString(), anyDouble())).thenReturn(1.0);
 
         // when
@@ -46,6 +52,7 @@ class SearchKeywordServiceTest {
 
         // then
         verify(zSetOperations).incrementScore("popular:search", "에어팟", 1.0);
+        verify(hashOperations).put(eq("search:last-searched"), eq("에어팟"), anyString());
     }
 
     @Test
@@ -111,6 +118,50 @@ class SearchKeywordServiceTest {
 
         // when & then
         assertThatThrownBy(() -> searchKeywordService.getTopKeywords())
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.SEARCH_KEYWORD_READ_FAILED);
+    }
+
+    @Test
+    @DisplayName("검색어 통계 조회 성공")
+    void getSearchKeywordStats_success() {
+        // given
+        when(stringRedisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
+
+        Set<ZSetOperations.TypedTuple<String>> mockTuples = new LinkedHashSet<>();
+        mockTuples.add(new ZSetOperations.TypedTuple<String>() {
+            @Override
+            public String getValue() { return "에어팟"; }
+            @Override
+            public Double getScore() { return 523.0; }
+            @Override
+            public int compareTo(ZSetOperations.TypedTuple<String> o) { return 0; }
+        });
+
+        when(zSetOperations.reverseRangeWithScores("popular:search", 0, -1)).thenReturn(mockTuples);
+        when(hashOperations.multiGet(eq("search:last-searched"), anyList())).thenReturn(List.of("2026-06-22T11:00:00"));
+
+        // when
+        List<SearchKeywordStatsResponse> result = searchKeywordService.getSearchKeywordStats();
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).keyword()).isEqualTo("에어팟");
+        assertThat(result.get(0).count()).isEqualTo(523L);
+        assertThat(result.get(0).lastSearchedAt()).isEqualTo("2026-06-22T11:00:00");
+    }
+
+    @Test
+    @DisplayName("검색어 통계 조회 중 에러 발생 시 CustomException(SEARCH_KEYWORD_READ_FAILED) 발생")
+    void getSearchKeywordStats_error_throwsException() {
+        // given
+        when(stringRedisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        when(zSetOperations.reverseRangeWithScores("popular:search", 0, -1))
+                .thenThrow(new RuntimeException("Redis failure"));
+
+        // when & then
+        assertThatThrownBy(() -> searchKeywordService.getSearchKeywordStats())
                 .isInstanceOf(CustomException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.SEARCH_KEYWORD_READ_FAILED);
     }
