@@ -33,7 +33,7 @@ public class CartItem extends BaseEntity {
 
     // 상품 수량
     @Column(nullable = false)
-    private int quantity;
+    private Integer quantity;
 
     // 소속된 장바구니
     @ManyToOne(fetch = FetchType.LAZY)
@@ -55,7 +55,7 @@ public class CartItem extends BaseEntity {
     protected CartItem(
             Cart cart,
             Product product,
-            int quantity
+            Integer quantity
     ) {
         this.cart = cart;
         this.product = product;
@@ -66,7 +66,7 @@ public class CartItem extends BaseEntity {
     public static CartItem create(
             Cart cart,
             Product product,
-            int quantity
+            Integer quantity
     ) {
         return new CartItem(
                 cart,
@@ -76,12 +76,12 @@ public class CartItem extends BaseEntity {
     }
 
     // 수량 변경
-    public void updateQuantity(int quantity) {
+    public void updateQuantity(Integer quantity) {
         this.quantity = quantity;
     }
 
     // 동일 상품 추가 시 수량 증가
-    public void addQuantity(int quantity) {
+    public void addQuantity(Integer quantity) {
         this.quantity += quantity;
     }
 
@@ -98,7 +98,7 @@ public class CartItem extends BaseEntity {
     }
 
     // 삭제된 장바구니 상품 복구
-    public void restore(int quantity) {
+    public void restore(Integer quantity) {
         this.deletedAt = null;
         this.quantity = quantity;
     }

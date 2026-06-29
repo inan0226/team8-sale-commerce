@@ -7,7 +7,7 @@ public record CartItemResponse(
         Long cartItemId,
         Long productId,
         String productName,
-        int quantity
+        Integer quantity
 ) {
     public static CartItemResponse from(
             CartItem cartItem

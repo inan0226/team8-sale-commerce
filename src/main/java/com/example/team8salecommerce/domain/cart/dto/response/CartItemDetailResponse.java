@@ -8,7 +8,7 @@ public record CartItemDetailResponse(
         Long productId,
         String productName,
         Long price,
-        int quantity,
+        Integer quantity,
         Long totalPrice
 ) {
     public static CartItemDetailResponse from(
