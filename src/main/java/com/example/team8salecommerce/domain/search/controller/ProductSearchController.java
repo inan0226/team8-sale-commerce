@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -32,7 +33,7 @@ public class ProductSearchController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
     ) {
-        if ((keyword == null || keyword.trim().isEmpty()) && categoryId == null && minPrice == null && maxPrice == null) {
+        if (!StringUtils.hasText(keyword) && categoryId == null && minPrice == null && maxPrice == null) {
             throw new ProductException(ErrorCode.INVALID_SEARCH_CONDITION);
         }
 
@@ -40,7 +41,7 @@ public class ProductSearchController {
             throw new ProductException(ErrorCode.INVALID_PRICE_RANGE);
         }
 
-        if (keyword != null && !keyword.trim().isEmpty()) {
+        if (StringUtils.hasText(keyword)) {
             searchKeywordService.incrementKeywordCount(keyword);
         }
 

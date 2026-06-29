@@ -1,7 +1,6 @@
 package com.example.team8salecommerce.domain.product.service;
 
 import com.example.team8salecommerce.domain.product.enumtype.ProductSortType;
-import com.example.team8salecommerce.domain.product.dto.ProductListResponse;
 import com.example.team8salecommerce.domain.product.dto.ProductPageResponse;
 import com.example.team8salecommerce.domain.product.repository.ProductRepository;
 import com.example.team8salecommerce.domain.product.dto.ProductDetailResponse;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -44,17 +42,7 @@ public class ProductService {
 
         log.info("상품 목록 조회 완료");
 
-        List<ProductListResponse> content = productPage
-                .map(ProductListResponse::from)
-                .getContent();
-
-        return new ProductPageResponse(
-                content,
-                productPage.getNumber(),
-                productPage.getSize(),
-                productPage.getTotalPages(),
-                productPage.getTotalElements()
-        );
+        return ProductPageResponse.from(productPage);
     }
 
 
@@ -64,21 +52,6 @@ public class ProductService {
         Product product = productRepository.findByIdWithCategory(productId)
                 .orElseThrow(() -> new ProductException(ErrorCode.PRODUCT_NOT_FOUND));
 
-        String description =
-                product.getDescription() != null ? product.getDescription() : "상품 설명 없음";
-
-        Integer viewCount =
-                product.getViewCount() != null ? product.getViewCount() : 0;
-
-        return new ProductDetailResponse(
-                product.getId(),
-                product.getName(),
-                product.getBrand(),
-                description,
-                product.getPrice(),
-                product.getStock(),
-                product.getCategory() != null ? product.getCategory().getName() : "UNKNOWN",
-                viewCount
-        );
+        return ProductDetailResponse.from(product);
     }
 }
