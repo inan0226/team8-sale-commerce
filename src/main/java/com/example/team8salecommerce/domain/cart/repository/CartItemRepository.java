@@ -1,10 +1,12 @@
 package com.example.team8salecommerce.domain.cart.repository;
 
 import com.example.team8salecommerce.domain.cart.entity.CartItem;
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 /**
@@ -44,7 +46,9 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
 
     /**
      * 주문 요청에 포함된 활성 장바구니 상품과 상품 정보를 한 번에 조회한다.
+     * 동일한 장바구니 항목으로 동시에 주문하는 요청은 이 잠금에서 직렬화된다.
      */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select ci
             from CartItem ci

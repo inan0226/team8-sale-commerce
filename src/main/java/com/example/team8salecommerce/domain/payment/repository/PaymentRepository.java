@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.example.team8salecommerce.domain.payment.entity.Payment;
+import com.example.team8salecommerce.domain.payment.entity.PaymentOrderType;
 import com.example.team8salecommerce.domain.payment.entity.PaymentStatus;
 
 /**
@@ -20,7 +21,11 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	 * 주문별 결제 정보 조회, 중복 결제 여부 확인,
 	 * 환불 시 결제 정보 조회 등에 사용할 수 있다.
 	 */
-	Optional<Payment> findByOrderId(Long orderId);
+	default Optional<Payment> findByOrderId(Long orderId) {
+		return findByOrderIdAndOrderType(orderId, PaymentOrderType.PROMOTION);
+	}
+
+	Optional<Payment> findByOrderIdAndOrderType(Long orderId, PaymentOrderType orderType);
 
 	/**
 	 * PortOne 결제 ID로 결제 정보를 조회한다.
@@ -35,12 +40,36 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	 *
 	 * 결제 승인 API에서 중복 결제를 막을 때 사용할 수 있다.
 	 */
-	boolean existsByOrderIdAndStatus(Long orderId, com.example.team8salecommerce.domain.payment.entity.PaymentStatus status);
+	default boolean existsByOrderIdAndStatus(Long orderId, PaymentStatus status) {
+		return existsByOrderIdAndOrderTypeAndStatus(
+			orderId,
+			PaymentOrderType.PROMOTION,
+			status
+		);
+	}
+
+	boolean existsByOrderIdAndOrderTypeAndStatus(
+		Long orderId,
+		PaymentOrderType orderType,
+		PaymentStatus status
+	);
 
 	/**
 	 * 주문 ID와 결제 상태로 결제 정보를 조회한다.
 	 *
 	 * 환불 요청 시 결제 완료된 Payment만 환불 대상으로 사용하기 위해 필요하다.
 	 */
-	Optional<Payment> findByOrderIdAndStatus(Long orderId, PaymentStatus status);
+	default Optional<Payment> findByOrderIdAndStatus(Long orderId, PaymentStatus status) {
+		return findByOrderIdAndOrderTypeAndStatus(
+			orderId,
+			PaymentOrderType.PROMOTION,
+			status
+		);
+	}
+
+	Optional<Payment> findByOrderIdAndOrderTypeAndStatus(
+		Long orderId,
+		PaymentOrderType orderType,
+		PaymentStatus status
+	);
 }

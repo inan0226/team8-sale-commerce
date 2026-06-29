@@ -75,6 +75,32 @@ public class Order extends BaseEntity {
         this.status = OrderStatus.CANCELLED;
     }
 
+    // 결제 대기 주문을 결제 완료 상태로 변경
+    public void markAsPaid() {
+        if (!isWaiting()) {
+            throw new CustomException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+        this.status = OrderStatus.PAID;
+    }
+
+    // 결제 대기 주문을 결제 실패 상태로 변경
+    public void failPayment() {
+        if (!isWaiting()) {
+            throw new CustomException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+        this.status = OrderStatus.PAYMENT_FAILED;
+    }
+
+    // 결제 대기 상태 여부 확인
+    public boolean isWaiting() {
+        return status == OrderStatus.WAITING;
+    }
+
+    // 결제 완료 상태 여부 확인
+    public boolean isPaid() {
+        return status == OrderStatus.PAID;
+    }
+
     // 주문 생성 검증
     private void validateCreate(Member member, Long totalPrice, LocalDateTime orderedAt) {
         if (member == null || totalPrice == null || orderedAt == null || totalPrice <= 0) {

@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -55,7 +56,7 @@ public class OrderController {
     }
 
     // 주문 취소
-    @PostMapping("/{orderId}/cancel")
+    @PatchMapping("/{orderId}/cancel")
     public ResponseEntity<ApiResponse<OrderResponse>> cancelOrder(
             @AuthenticationPrincipal AuthMember authMember,
             @PathVariable @Positive(message = "주문 ID는 양수여야 합니다.") Long orderId

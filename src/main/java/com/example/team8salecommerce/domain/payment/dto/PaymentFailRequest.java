@@ -1,5 +1,7 @@
 package com.example.team8salecommerce.domain.payment.dto;
 
+import com.example.team8salecommerce.domain.payment.entity.PaymentOrderType;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -47,6 +49,24 @@ public record PaymentFailRequest(
 	 */
 	@NotBlank(message = "결제 실패 사유는 필수입니다.")
 	@Size(max = 255, message = "결제 실패 사유는 255자 이하로 입력해야 합니다.")
-	String failureReason
+	String failureReason,
+
+	PaymentOrderType orderType
 ) {
+	/** 유형 누락 시 기존 특가 결제로 처리한다. */
+	public PaymentFailRequest {
+		if (orderType == null) {
+			orderType = PaymentOrderType.PROMOTION;
+		}
+	}
+
+	/** 기존 생성자 호환성을 유지한다. */
+	public PaymentFailRequest(
+		Long orderId,
+		String portOnePaymentId,
+		Long amount,
+		String failureReason
+	) {
+		this(orderId, portOnePaymentId, amount, failureReason, PaymentOrderType.PROMOTION);
+	}
 }

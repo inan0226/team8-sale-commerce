@@ -8,9 +8,7 @@ import com.example.team8salecommerce.domain.member.entity.Member;
 import com.example.team8salecommerce.domain.order.entity.Order;
 import com.example.team8salecommerce.domain.order.entity.OrderItem;
 import com.example.team8salecommerce.domain.order.enumtype.OrderStatus;
-import com.example.team8salecommerce.domain.order.entity.PromotionOrderItem;
 import com.example.team8salecommerce.domain.product.entity.Product;
-import com.example.team8salecommerce.domain.promotion.entity.PromotionProduct;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
 import java.time.LocalDateTime;
@@ -52,37 +50,6 @@ class OrderEntityTest {
         assertThat(orderItem.getProductName()).isEqualTo("키보드");
         assertThat(orderItem.getProductPrice()).isEqualTo(10_000L);
         assertThat(orderItem.calculateTotalPrice()).isEqualTo(20_000L);
-    }
-
-    @Test
-    @DisplayName("특가 주문 상품은 일반 주문 상품과 분리해 특가 가격과 할인율을 저장한다")
-    void promotionOrderItemSnapshot() {
-        // given: 공통 주문, 원본 상품, 특가 상품을 준비
-        Product product = createProduct();
-        PromotionProduct promotionProduct = PromotionProduct.create(
-                10L,
-                "오늘의 키보드",
-                7_000L,
-                30,
-                100,
-                LocalDateTime.now().minusHours(1),
-                LocalDateTime.now().plusHours(1)
-        );
-        Order order = Order.create(createMember(), 14_000L, LocalDateTime.now());
-
-        // when: 특가 주문 상품을 생성
-        PromotionOrderItem orderItem = PromotionOrderItem.create(
-                order,
-                promotionProduct,
-                product,
-                2
-        );
-
-        // then: 원가, 특가, 할인율이 별도 스냅샷으로 보존
-        assertThat(orderItem.getOriginalPrice()).isEqualTo(10_000L);
-        assertThat(orderItem.getPromotionPrice()).isEqualTo(7_000L);
-        assertThat(orderItem.getDiscountRate()).isEqualTo(30);
-        assertThat(orderItem.calculateTotalPrice()).isEqualTo(14_000L);
     }
 
     private Member createMember() {

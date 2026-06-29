@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -106,14 +107,14 @@ class OrderControllerTest {
     }
 
     @Test
-    @DisplayName("POST /orders/{orderId}/cancel 요청으로 주문을 취소한다")
+    @DisplayName("PATCH /orders/{orderId}/cancel 요청으로 주문을 취소한다")
     void cancelOrderSuccess() throws Exception {
         // given: 주문 서비스가 취소 상태 응답을 반환하도록 준비
         when(orderService.cancelOrder(MEMBER_ID, ORDER_ID))
                 .thenReturn(createOrderResponse(OrderStatus.CANCELLED));
 
         // when & then: 취소 상태와 성공 응답을 확인
-        mockMvc.perform(post("/orders/{orderId}/cancel", ORDER_ID))
+        mockMvc.perform(patch("/orders/{orderId}/cancel", ORDER_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("CANCELLED"));
 
