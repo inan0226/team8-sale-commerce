@@ -1,20 +1,24 @@
 package com.example.team8salecommerce.global.websocket;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.example.team8salecommerce.domain.chat.service.ChatService;
 import com.example.team8salecommerce.domain.member.entity.Role;
-import com.example.team8salecommerce.domain.member.repository.MemberRepository;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
 import com.example.team8salecommerce.global.security.AuthMember;
-import com.example.team8salecommerce.global.security.JwtTokenProvider;
+import com.example.team8salecommerce.global.security.AuthMemberResolver;
+import com.example.team8salecommerce.global.security.BearerTokenResolver;
+import com.example.team8salecommerce.global.security.JwtAuthenticationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -27,16 +31,37 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 class WebSocketJwtChannelInterceptorTest {
 
     @Mock
-    private JwtTokenProvider jwtTokenProvider;
+    private BearerTokenResolver bearerTokenResolver;
 
     @Mock
-    private MemberRepository memberRepository;
+    private JwtAuthenticationService jwtAuthenticationService;
+
+    @Spy
+    private AuthMemberResolver authMemberResolver;
 
     @Mock
     private ChatService chatService;
 
     @InjectMocks
     private WebSocketJwtChannelInterceptor interceptor;
+
+    @Test
+    void connect_authenticatesWithBearerToken() {
+        AuthMember authMember = new AuthMember(1L, "member@example.com", Role.USER);
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(authMember, null, authMember.getAuthorities());
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
+        accessor.setNativeHeader("Authorization", "Bearer access-token");
+        accessor.setLeaveMutable(true);
+        Message<?> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+
+        when(bearerTokenResolver.resolve("Bearer access-token")).thenReturn("access-token");
+        when(jwtAuthenticationService.authenticate("access-token")).thenReturn(authentication);
+
+        interceptor.preSend(message, mock(MessageChannel.class));
+
+        assertThat(accessor.getUser()).isEqualTo(authentication);
+    }
 
     @Test
     void subscribe_validatesChatRoomAccess() {
