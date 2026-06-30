@@ -37,9 +37,8 @@ Redis는 검색 결과 캐시, 인기 검색어, Refresh Token과 로그아웃 �
 
 ## ERD
 
-> ERD 이미지를 추가할 예정입니다.
+<img width="2048" height="3523" alt="diagram (1)" src="https://github.com/user-attachments/assets/ea783f5c-e4cb-4f2f-b8e5-d8fb05dca272" />
 
-<!-- ERD 이미지 삽입 -->
 
 상세 엔티티 관계와 테이블 설명은 [ERD 문서](docs/erd.md)에서 확인할 수 있습니다.
 
