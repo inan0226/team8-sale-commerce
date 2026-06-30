@@ -3,8 +3,8 @@ package com.example.team8salecommerce.domain.refund.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.team8salecommerce.domain.refund.dto.RefundDetailQuery;
 import com.example.team8salecommerce.domain.refund.dto.RefundResponse;
-import com.example.team8salecommerce.domain.refund.entity.Refund;
 import com.example.team8salecommerce.domain.refund.repository.RefundRepository;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
@@ -27,6 +27,9 @@ public class RefundQueryService {
 	/**
 	 * 로그인한 회원의 환불 상세 정보를 조회한다.
 	 *
+	 * 엔티티 전체를 조회하지 않고 상세 조회에 필요한 컬럼만 DTO로 직접 조회한다.
+	 * 이렇게 하면 읽기 전용 API에서 불필요한 영속성 컨텍스트 사용을 줄일 수 있다.
+	 *
 	 * @param memberId 로그인한 회원 ID
 	 * @param refundId 조회할 환불 ID
 	 * @return 환불 상세 응답
@@ -35,10 +38,10 @@ public class RefundQueryService {
 		validateMemberId(memberId);
 		validateRefundId(refundId);
 
-		Refund refund = refundRepository.findByIdAndMemberId(refundId, memberId)
+		RefundDetailQuery refundDetail = refundRepository.findDetailByIdAndMemberId(refundId, memberId)
 			.orElseThrow(() -> new CustomException(ErrorCode.REFUND_NOT_FOUND));
 
-		return RefundResponse.from(refund);
+		return refundDetail.toResponse();
 	}
 
 	/**

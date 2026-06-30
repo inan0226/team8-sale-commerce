@@ -2,8 +2,8 @@ package com.example.team8salecommerce.domain.refund.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
@@ -15,11 +15,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
+import com.example.team8salecommerce.domain.refund.dto.RefundDetailQuery;
 import com.example.team8salecommerce.domain.refund.dto.RefundResponse;
-import com.example.team8salecommerce.domain.refund.entity.Refund;
-import com.example.team8salecommerce.domain.refund.entity.RefundReasonType;
+import com.example.team8salecommerce.domain.refund.entity.RefundStatus;
 import com.example.team8salecommerce.domain.refund.repository.RefundRepository;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
@@ -48,16 +47,20 @@ class RefundQueryServiceTest {
 		Long paymentId = 200L;
 		Long refundAmount = 7000L;
 
-		Refund refund = createRefund(
+		// 환불 상세 조회에 필요한 컬럼만 담은 조회 전용 객체를 준비한다.
+		RefundDetailQuery refundDetail = new RefundDetailQuery(
 			refundId,
 			orderId,
 			paymentId,
-			memberId,
-			refundAmount
+			refundAmount,
+			RefundStatus.REFUND_REQUEST,
+			LocalDateTime.now(),
+			null
 		);
 
-		when(refundRepository.findByIdAndMemberId(refundId, memberId))
-			.thenReturn(Optional.of(refund));
+		// 엔티티 전체 조회가 아니라 DTO 직접 조회 메서드가 호출되도록 설정한다.
+		when(refundRepository.findDetailByIdAndMemberId(refundId, memberId))
+			.thenReturn(Optional.of(refundDetail));
 
 		// when
 		RefundResponse response = refundQueryService.getRefund(memberId, refundId);
@@ -69,7 +72,7 @@ class RefundQueryServiceTest {
 		assertEquals(refundAmount, response.refundAmount());
 		assertEquals("REFUND_REQUEST", response.refundStatus());
 
-		verify(refundRepository).findByIdAndMemberId(refundId, memberId);
+		verify(refundRepository).findDetailByIdAndMemberId(refundId, memberId);
 	}
 
 	@Test
@@ -87,7 +90,8 @@ class RefundQueryServiceTest {
 		// then
 		assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
 
-		verify(refundRepository, never()).findByIdAndMemberId(null, refundId);
+		// 회원 ID 검증에서 실패했기 때문에 Repository는 호출되면 안 된다.
+		verifyNoInteractions(refundRepository);
 	}
 
 	@Test
@@ -105,7 +109,8 @@ class RefundQueryServiceTest {
 		// then
 		assertEquals(ErrorCode.INVALID_REQUEST, exception.getErrorCode());
 
-		verify(refundRepository, never()).findByIdAndMemberId(memberId, null);
+		// 환불 ID 검증에서 실패했기 때문에 Repository는 호출되면 안 된다.
+		verifyNoInteractions(refundRepository);
 	}
 
 	@Test
@@ -124,7 +129,8 @@ class RefundQueryServiceTest {
 		// then
 		assertEquals(ErrorCode.INVALID_REQUEST, exception.getErrorCode());
 
-		verify(refundRepository, never()).findByIdAndMemberId(memberId, refundId);
+		// 환불 ID 검증에서 실패했기 때문에 Repository는 호출되면 안 된다.
+		verifyNoInteractions(refundRepository);
 	}
 
 	@Test
@@ -134,7 +140,7 @@ class RefundQueryServiceTest {
 		Long memberId = 1L;
 		Long refundId = 10L;
 
-		when(refundRepository.findByIdAndMemberId(refundId, memberId))
+		when(refundRepository.findDetailByIdAndMemberId(refundId, memberId))
 			.thenReturn(Optional.empty());
 
 		// when
@@ -146,31 +152,6 @@ class RefundQueryServiceTest {
 		// then
 		assertEquals(ErrorCode.REFUND_NOT_FOUND, exception.getErrorCode());
 
-		verify(refundRepository).findByIdAndMemberId(refundId, memberId);
-	}
-
-	/**
-	 * 테스트용 환불 요청 엔티티를 생성한다.
-	 */
-	private Refund createRefund(
-		Long refundId,
-		Long orderId,
-		Long paymentId,
-		Long memberId,
-		Long refundAmount
-	) {
-		Refund refund = Refund.createRequest(
-			orderId,
-			paymentId,
-			memberId,
-			RefundReasonType.CHANGE_OF_MIND,
-			"단순 변심",
-			refundAmount,
-			LocalDateTime.now()
-		);
-
-		ReflectionTestUtils.setField(refund, "id", refundId);
-
-		return refund;
+		verify(refundRepository).findDetailByIdAndMemberId(refundId, memberId);
 	}
 }
