@@ -64,4 +64,26 @@ class ProductSearchServiceTest {
 
         verify(productRepository).searchProducts(anyString(), anyLong(), anyLong(), anyLong(), any(Pageable.class));
     }
+
+    @Test
+    @DisplayName("검색어가 카테고리명일 때도 정상적으로 검색 서비스를 호출하여 결과를 반환한다")
+    void searchProducts_byCategoryKeywordSuccess() {
+        Category category = CategoryFixture.전자제품();
+        Product product = ProductFixture.상품(category);
+        ReflectionTestUtils.setField(product, "id", 20L);
+
+        Page<Product> productPage = new PageImpl<>(List.of(product), PageRequest.of(0, 20), 1);
+
+        when(productRepository.searchProducts(eq("전자제품"), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(productPage);
+
+        ProductSearchCache response = productSearchService.searchProducts(
+                "전자제품", null, null, null, 0, 20
+        );
+
+        assertThat(response.getContent()).hasSize(1);
+        assertThat(response.getContent().get(0).getId()).isEqualTo(20L);
+
+        verify(productRepository).searchProducts(eq("전자제품"), any(), any(), any(), any(Pageable.class));
+    }
 }

@@ -15,6 +15,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import java.util.List;
 
 import java.util.Optional;
 
@@ -86,5 +92,22 @@ class ProductServiceTest {
                 .isInstanceOf(ProductException.class);
 
         verify(productRepository).findByIdWithCategory(0L);
+    }
+
+    @Test
+    @DisplayName("상품 목록 조회 시 기존 sort 파라미터가 엔티티 실제 필드로 정상 변환되고 size가 100으로 제한된다")
+    void getProducts_sortAndSizeValidation() {
+        Pageable pageable = PageRequest.of(0, 150, Sort.by("PRICE_ASC"));
+        Page<Product> productPage = new PageImpl<>(List.of());
+
+        org.mockito.ArgumentCaptor<Pageable> pageableCaptor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        when(productRepository.findByIsDeletedFalse(pageableCaptor.capture())).thenReturn(productPage);
+
+        productService.getProducts(pageable);
+
+        Pageable captured = pageableCaptor.getValue();
+        assertThat(captured.getPageSize()).isEqualTo(100);
+        assertThat(captured.getSort().getOrderFor("price")).isNotNull();
+        assertThat(captured.getSort().getOrderFor("price").getDirection()).isEqualTo(Sort.Direction.ASC);
     }
 }

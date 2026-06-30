@@ -24,6 +24,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
 
         List<Product> content = queryFactory
                 .selectFrom(product)
+                .leftJoin(product.category).fetchJoin()
                 .where(
                         keywordContains(keyword),
                         categoryEq(categoryId),
@@ -39,6 +40,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         JPAQuery<Long> countQuery = queryFactory
                 .select(product.count())
                 .from(product)
+                .leftJoin(product.category)
                 .where(
                         keywordContains(keyword),
                         categoryEq(categoryId),
@@ -56,7 +58,8 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         }
         QProduct product = QProduct.product;
         return product.name.containsIgnoreCase(keyword)
-                .or(product.brand.containsIgnoreCase(keyword));
+                .or(product.brand.containsIgnoreCase(keyword))
+                .or(product.category.name.containsIgnoreCase(keyword));
     }
 
     private BooleanExpression categoryEq(Long categoryId) {
