@@ -8,9 +8,11 @@ import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
 import com.example.team8salecommerce.global.response.ApiResponse;
 import com.example.team8salecommerce.global.security.AuthMember;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -29,48 +31,48 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/orders")
 public class OrderController {
 
-    private final OrderService orderService;
+	private final OrderService orderService;
 
-   // 주문 생성
-    @PostMapping
-    public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
-            @AuthenticationPrincipal AuthMember authMember,
-            @Valid @RequestBody CreateOrderRequest request
-    ) {
-        validateAuthenticatedMember(authMember);
-        OrderResponse response = orderService.createOrder(authMember.memberId(), request);
+	// 주문 생성
+	@PostMapping
+	public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
+		@AuthenticationPrincipal AuthMember authMember,
+		@Valid @RequestBody CreateOrderRequest request
+	) {
+		validateAuthenticatedMember(authMember);
+		OrderResponse response = orderService.createOrder(authMember.memberId(), request);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("주문 생성 성공", response));
-    }
+		return ResponseEntity.status(HttpStatus.CREATED)
+			.body(ApiResponse.success("주문 생성 성공", response));
+	}
 
-    // 주문 조회
-    @GetMapping
-    public ResponseEntity<ApiResponse<OrderListResponse>> getOrders(
-            @AuthenticationPrincipal AuthMember authMember
-    ) {
-        validateAuthenticatedMember(authMember);
-        OrderListResponse response = orderService.getOrders(authMember.memberId());
+	// 주문 조회
+	@GetMapping
+	public ResponseEntity<ApiResponse<OrderListResponse>> getOrders(
+		@AuthenticationPrincipal AuthMember authMember
+	) {
+		validateAuthenticatedMember(authMember);
+		OrderListResponse response = orderService.getOrders(authMember.memberId());
 
-        return ResponseEntity.ok(ApiResponse.success("주문 목록 조회 성공", response));
-    }
+		return ResponseEntity.ok(ApiResponse.success("주문 목록 조회 성공", response));
+	}
 
-    // 주문 취소
-    @PatchMapping("/{orderId}/cancel")
-    public ResponseEntity<ApiResponse<OrderResponse>> cancelOrder(
-            @AuthenticationPrincipal AuthMember authMember,
-            @PathVariable @Positive(message = "주문 ID는 양수여야 합니다.") Long orderId
-    ) {
-        validateAuthenticatedMember(authMember);
-        OrderResponse response = orderService.cancelOrder(authMember.memberId(), orderId);
+	// 주문 취소
+	@PatchMapping("/{orderId}/cancel")
+	public ResponseEntity<ApiResponse<OrderResponse>> cancelOrder(
+		@AuthenticationPrincipal AuthMember authMember,
+		@PathVariable @Positive(message = "주문 ID는 양수여야 합니다.") Long orderId
+	) {
+		validateAuthenticatedMember(authMember);
+		OrderResponse response = orderService.cancelOrder(authMember.memberId(), orderId);
 
-        return ResponseEntity.ok(ApiResponse.success("주문 취소 성공", response));
-    }
+		return ResponseEntity.ok(ApiResponse.success("주문 취소 성공", response));
+	}
 
-    // 인증 회원 객체 검증
-    private void validateAuthenticatedMember(AuthMember authMember) {
-        if (authMember == null) {
-            throw new CustomException(ErrorCode.UNAUTHORIZED);
-        }
-    }
+	// 인증 회원 객체 검증
+	private void validateAuthenticatedMember(AuthMember authMember) {
+		if (authMember == null) {
+			throw new CustomException(ErrorCode.UNAUTHORIZED);
+		}
+	}
 }
