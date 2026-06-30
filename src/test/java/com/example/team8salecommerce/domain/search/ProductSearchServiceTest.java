@@ -5,7 +5,7 @@ import com.example.team8salecommerce.domain.fixture.CategoryFixture;
 import com.example.team8salecommerce.domain.fixture.ProductFixture;
 import com.example.team8salecommerce.domain.product.entity.Product;
 import com.example.team8salecommerce.domain.product.repository.ProductRepository;
-import com.example.team8salecommerce.domain.search.dto.ProductSearchResponse;
+import com.example.team8salecommerce.domain.search.dto.ProductSearchCache;
 import com.example.team8salecommerce.domain.search.service.ProductSearchService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,18 +49,18 @@ class ProductSearchServiceTest {
                 .thenReturn(productPage);
 
         // when
-        ProductSearchResponse response = productSearchService.searchProducts(
+        ProductSearchCache response = productSearchService.searchProducts(
                 "에어팟", 1L, 100000L, 500000L, 0, 20
         );
 
         // then
-        assertThat(response.content()).hasSize(1);
-        assertThat(response.content().get(0).id()).isEqualTo(10L);
-        assertThat(response.content().get(0).name()).isEqualTo("상품명");
-        assertThat(response.page()).isEqualTo(0);
-        assertThat(response.size()).isEqualTo(20);
-        assertThat(response.totalPages()).isEqualTo(1);
-        assertThat(response.totalElements()).isEqualTo(1L);
+        assertThat(response.getContent()).hasSize(1);
+        assertThat(response.getContent().get(0).getId()).isEqualTo(10L);
+        assertThat(response.getContent().get(0).getName()).isEqualTo("상품명");
+        assertThat(response.getPage()).isEqualTo(0);
+        assertThat(response.getSize()).isEqualTo(20);
+        assertThat(response.getTotalPages()).isEqualTo(1);
+        assertThat(response.getTotalElements()).isEqualTo(1L);
 
         verify(productRepository).findAll(any(Specification.class), any(Pageable.class));
     }

@@ -1,6 +1,7 @@
 package com.example.team8salecommerce.domain.fixture;
 
 import com.example.team8salecommerce.domain.category.entity.Category;
+import com.example.team8salecommerce.domain.product.dto.ProductDetailResponse;
 import com.example.team8salecommerce.domain.product.entity.Product;
 
 public class ProductFixture {
@@ -27,5 +28,9 @@ public class ProductFixture {
                 "설명",
                 category
         );
+    }
+
+    public static ProductDetailResponse 상품상세응답(Product product) {
+        return ProductDetailResponse.from(product);
     }
 }

@@ -1,6 +1,5 @@
 package com.example.team8salecommerce.domain.payment.controller;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,10 +13,9 @@ import com.example.team8salecommerce.domain.payment.dto.PaymentFailRequest;
 import com.example.team8salecommerce.domain.payment.dto.PaymentFailResponse;
 import com.example.team8salecommerce.domain.payment.facade.PaymentFailFacade;
 import com.example.team8salecommerce.domain.payment.service.PaymentService;
-import com.example.team8salecommerce.global.exception.CustomException;
-import com.example.team8salecommerce.global.exception.ErrorCode;
 import com.example.team8salecommerce.global.response.ApiResponse;
 import com.example.team8salecommerce.global.security.AuthMember;
+import com.example.team8salecommerce.global.security.AuthMemberResolver;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +33,7 @@ public class PaymentController {
 
 	private final PaymentService paymentService;
 	private final PaymentFailFacade paymentFailFacade;
+	private final AuthMemberResolver authMemberResolver;
 
 	/**
 	 * 결제 승인 API
@@ -47,18 +46,14 @@ public class PaymentController {
 		@AuthenticationPrincipal AuthMember authMember,
 		@Valid @RequestBody PaymentConfirmRequest request
 	) {
-		validateAuthenticatedMember(authMember);
+		Long memberId = authMemberResolver.requireMemberId(authMember);
 
 		PaymentConfirmResponse responseDto = paymentService.confirmPayment(
-			authMember.memberId(),
+			memberId,
 			request
 		);
 
-		ResponseEntity<ApiResponse<PaymentConfirmResponse>> response = ResponseEntity
-			.status(HttpStatus.OK)
-			.body(ApiResponse.success(responseDto));
-
-		return response;
+		return ResponseEntity.ok(ApiResponse.success(responseDto));
 	}
 
 	/**
@@ -74,26 +69,13 @@ public class PaymentController {
 		@AuthenticationPrincipal AuthMember authMember,
 		@Valid @RequestBody PaymentFailRequest request
 	) {
-		validateAuthenticatedMember(authMember);
+		Long memberId = authMemberResolver.requireMemberId(authMember);
 
 		PaymentFailResponse responseDto = paymentFailFacade.failPayment(
-			authMember.memberId(),
+			memberId,
 			request
 		);
 
-		ResponseEntity<ApiResponse<PaymentFailResponse>> response = ResponseEntity
-			.status(HttpStatus.OK)
-			.body(ApiResponse.success(responseDto));
-
-		return response;
-	}
-
-	/**
-	 * 인증된 회원 정보를 검증한다.
-	 */
-	private void validateAuthenticatedMember(AuthMember authMember) {
-		if (authMember == null) {
-			throw new CustomException(ErrorCode.UNAUTHORIZED);
-		}
+		return ResponseEntity.ok(ApiResponse.success(responseDto));
 	}
 }

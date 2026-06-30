@@ -1,3 +1,4 @@
+# Test profile overrides for tests that explicitly activate the "test" profile.
 spring:
   datasource:
     url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
@@ -13,3 +14,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
+
+chat:
+  redis-pubsub:
+    enabled: false
