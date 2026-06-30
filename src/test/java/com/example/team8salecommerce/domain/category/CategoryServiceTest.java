@@ -40,10 +40,11 @@ class CategoryServiceTest {
     private ProductRepository productRepository;
 
     @Test
-    @DisplayName("카테고리별 상품 목록 조회 성공")
-    void getCategoryProducts_success() {
+    @DisplayName("카테고리별 상품 목록 조회 성공 (이름 기준)")
+    void getCategoryProducts_byNameSuccess() {
         // given
         Long categoryId = 1L;
+        String categoryParam = "전자제품";
         Pageable pageable = PageRequest.of(0, 20);
         Category category = CategoryFixture.전자제품();
         ReflectionTestUtils.setField(category, "id", categoryId);
@@ -53,11 +54,11 @@ class CategoryServiceTest {
 
         Page<Product> productPage = new PageImpl<>(List.of(product), pageable, 1);
 
-        when(categoryRepository.existsById(categoryId)).thenReturn(true);
+        when(categoryRepository.findByName(categoryParam)).thenReturn(java.util.Optional.of(category));
         when(productRepository.findByCategoryIdAndIsDeletedFalse(categoryId, pageable)).thenReturn(productPage);
 
         // when
-        CategoryProductResponse response = categoryService.getCategoryProducts(categoryId, pageable);
+        CategoryProductResponse response = categoryService.getCategoryProducts(categoryParam, pageable);
 
         // then
         assertThat(response.content()).hasSize(1);
@@ -68,24 +69,24 @@ class CategoryServiceTest {
         assertThat(response.totalPages()).isEqualTo(1);
         assertThat(response.totalElements()).isEqualTo(1L);
 
-        verify(categoryRepository).existsById(categoryId);
+        verify(categoryRepository).findByName(categoryParam);
         verify(productRepository).findByCategoryIdAndIsDeletedFalse(categoryId, pageable);
     }
 
     @Test
-    @DisplayName("존재하지 않는 카테고리 ID 조회 시 예외 발생")
+    @DisplayName("존재하지 않는 카테고리 이름 조회 시 예외 발생")
     void getCategoryProducts_categoryNotFound() {
         // given
-        Long categoryId = 999L;
+        String categoryParam = "없는카테고리";
         Pageable pageable = PageRequest.of(0, 20);
 
-        when(categoryRepository.existsById(categoryId)).thenReturn(false);
+        when(categoryRepository.findByName(categoryParam)).thenReturn(java.util.Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> categoryService.getCategoryProducts(categoryId, pageable))
+        assertThatThrownBy(() -> categoryService.getCategoryProducts(categoryParam, pageable))
                 .isInstanceOf(CategoryException.class);
 
-        verify(categoryRepository).existsById(categoryId);
+        verify(categoryRepository).findByName(categoryParam);
         verifyNoInteractions(productRepository);
     }
 }

@@ -42,11 +42,10 @@ class ProductServiceTest {
         when(productRepository.findByIdWithCategory(1L))
                 .thenReturn(Optional.of(product));
 
-        ProductDetailResponse response =
-                productService.getProductDetail(1L);
+        ProductDetailResponse expected = ProductFixture.상품상세응답(product);
+        ProductDetailResponse response = productService.getProductDetail(1L);
 
-        assertThat(response.id()).isEqualTo(1L);
-        assertThat(response.name()).isEqualTo(product.getName());
+        assertThat(response).isEqualTo(expected);
 
         verify(productRepository).findByIdWithCategory(1L);
     }

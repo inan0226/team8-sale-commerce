@@ -9,4 +9,17 @@ public record ProductSearchResponse(
     int totalPages,
     long totalElements
 ) {
+    public static ProductSearchResponse from(ProductSearchCache cache) {
+        List<SearchProductDetailResponse> content = cache.getContent().stream()
+                .map(detail -> new SearchProductDetailResponse(detail.getId(), detail.getName(), detail.getPrice()))
+                .toList();
+
+        return new ProductSearchResponse(
+                content,
+                cache.getPage(),
+                cache.getSize(),
+                cache.getTotalPages(),
+                cache.getTotalElements()
+        );
+    }
 }

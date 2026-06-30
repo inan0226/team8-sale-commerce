@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @Slf4j
@@ -23,6 +24,7 @@ public class SearchKeywordService {
 
     private static final String KEYWORD_RANKING_KEY = "popular:search";
     private static final String KEYWORD_LAST_SEARCHED_KEY = "search:last-searched";
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
     private final StringRedisTemplate stringRedisTemplate;
 
     public void incrementKeywordCount(String keyword) {
@@ -33,7 +35,7 @@ public class SearchKeywordService {
             String trimmedKeyword = keyword.trim();
             stringRedisTemplate.opsForZSet().incrementScore(KEYWORD_RANKING_KEY, trimmedKeyword, 1.0);
             
-            String now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
+            String now = LocalDateTime.now().format(DATE_TIME_FORMATTER);
             stringRedisTemplate.opsForHash().put(KEYWORD_LAST_SEARCHED_KEY, trimmedKeyword, now);
         } catch (Exception exception) {
             log.warn("검색어 스코어 및 시간 갱신 실패: {}", keyword, exception);
@@ -73,22 +75,27 @@ public class SearchKeywordService {
                 return List.of();
             }
 
-            List<String> keywords = new ArrayList<>();
-            for (ZSetOperations.TypedTuple<String> tuple : typedTuples) {
-                keywords.add(tuple.getValue());
-            }
+            List<ZSetOperations.TypedTuple<String>> nonNullTuples = typedTuples.stream()
+                    .filter(tuple -> tuple.getValue() != null)
+                    .toList();
+
+            List<String> keywords = nonNullTuples.stream()
+                    .map(ZSetOperations.TypedTuple::getValue)
+                    .toList();
 
             List<Object> lastSearchedTimes = stringRedisTemplate.opsForHash()
                     .multiGet(KEYWORD_LAST_SEARCHED_KEY, new ArrayList<>(keywords));
 
             List<SearchKeywordStatsResponse> response = new ArrayList<>();
             int idx = 0;
-            for (ZSetOperations.TypedTuple<String> tuple : typedTuples) {
+            for (ZSetOperations.TypedTuple<String> tuple : nonNullTuples) {
                 String keyword = tuple.getValue();
                 Double score = tuple.getScore();
                 long count = score != null ? score.longValue() : 0L;
 
-                Object lastSearchedObj = lastSearchedTimes.get(idx++);
+                Object lastSearchedObj = (lastSearchedTimes != null && idx < lastSearchedTimes.size())
+                        ? lastSearchedTimes.get(idx++)
+                        : null;
                 String lastSearchedAt = lastSearchedObj != null ? lastSearchedObj.toString() : "";
 
                 response.add(new SearchKeywordStatsResponse(keyword, count, lastSearchedAt));

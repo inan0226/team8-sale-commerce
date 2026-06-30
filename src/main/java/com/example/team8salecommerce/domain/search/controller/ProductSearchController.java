@@ -1,6 +1,7 @@
 package com.example.team8salecommerce.domain.search.controller;
 
 import com.example.team8salecommerce.domain.product.exception.ProductException;
+import com.example.team8salecommerce.domain.search.dto.ProductSearchCache;
 import com.example.team8salecommerce.domain.search.dto.ProductSearchResponse;
 import com.example.team8salecommerce.domain.search.service.ProductSearchService;
 import com.example.team8salecommerce.domain.search.service.SearchKeywordService;
@@ -10,6 +11,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -32,7 +34,7 @@ public class ProductSearchController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
     ) {
-        if ((keyword == null || keyword.trim().isEmpty()) && categoryId == null && minPrice == null && maxPrice == null) {
+        if (!StringUtils.hasText(keyword) && categoryId == null && minPrice == null && maxPrice == null) {
             throw new ProductException(ErrorCode.INVALID_SEARCH_CONDITION);
         }
 
@@ -40,13 +42,14 @@ public class ProductSearchController {
             throw new ProductException(ErrorCode.INVALID_PRICE_RANGE);
         }
 
-        if (keyword != null && !keyword.trim().isEmpty()) {
+        if (StringUtils.hasText(keyword)) {
             searchKeywordService.incrementKeywordCount(keyword);
         }
 
-        ProductSearchResponse response = productSearchService.searchProducts(
+        ProductSearchCache cache = productSearchService.searchProducts(
                 keyword, categoryId, minPrice, maxPrice, page, size
         );
+        ProductSearchResponse response = ProductSearchResponse.from(cache);
         return ResponseEntity.ok(ApiResponse.success("상품 검색 성공", response));
     }
 }
