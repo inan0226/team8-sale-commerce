@@ -98,9 +98,13 @@ public class AuthController {
 	 */
 	@PostMapping("/logout")
 	public ResponseEntity<ApiResponse<Void>> logout(
-		@RequestHeader(value = "Authorization", required = false) String authorizationHeader
+		@RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+		HttpServletRequest request
 	) {
-		authService.logout(bearerTokenResolver.resolve(authorizationHeader));
+		authService.logout(
+			bearerTokenResolver.resolveOptional(authorizationHeader),
+			refreshTokenCookieProvider.resolveOptional(request)
+		);
 		return ResponseEntity.ok()
 			.header(HttpHeaders.SET_COOKIE, refreshTokenCookieProvider.expire().toString())
 			.body(ApiResponse.success("로그아웃이 완료되었습니다."));

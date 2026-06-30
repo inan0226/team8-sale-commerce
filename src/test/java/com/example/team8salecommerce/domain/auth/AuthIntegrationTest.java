@@ -7,6 +7,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.servlet.http.Cookie;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RedissonClient;
@@ -95,6 +102,7 @@ class AuthIntegrationTest {
                 .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("HttpOnly")))
                 .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("Secure")))
                 .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("SameSite=Strict")))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("Path=/auth")))
                 .andReturn();
 
         String accessToken = readAccessToken(loginResult);
@@ -170,7 +178,8 @@ class AuthIntegrationTest {
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
-                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("refreshToken=")));
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("refreshToken=")))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("Path=/auth")));
     }
 
     @Test
@@ -189,6 +198,67 @@ class AuthIntegrationTest {
 
         mockMvc.perform(post("/auth/refresh")
                         .cookie(new Cookie("refreshToken", oldRefreshToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void 같은_리프레시_토큰을_동시에_재발급하면_하나만_성공한다() throws Exception {
+        signup("refresh-concurrent@example.com", "Password123!", "refresh-concurrent");
+
+        MvcResult loginResult = login("refresh-concurrent@example.com", "Password123!")
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String oldRefreshToken = readRefreshToken(loginResult);
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+
+        Callable<Integer> refreshRequest = () -> {
+            ready.countDown();
+            start.await();
+            return mockMvc.perform(post("/auth/refresh")
+                            .cookie(new Cookie("refreshToken", oldRefreshToken)))
+                    .andReturn()
+                    .getResponse()
+                    .getStatus();
+        };
+
+        Future<Integer> first = executorService.submit(refreshRequest);
+        Future<Integer> second = executorService.submit(refreshRequest);
+
+        Assertions.assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+        start.countDown();
+
+        List<Integer> statuses = List.of(
+                first.get(5, TimeUnit.SECONDS),
+                second.get(5, TimeUnit.SECONDS)
+        );
+        executorService.shutdownNow();
+
+        Assertions.assertThat(statuses).containsExactlyInAnyOrder(200, 401);
+    }
+
+    @Test
+    void 액세스_토큰이_없어도_리프레시_쿠키로_로그아웃한다() throws Exception {
+        signup("logout-cookie@example.com", "Password123!", "logout-cookie");
+
+        MvcResult loginResult = login("logout-cookie@example.com", "Password123!")
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String refreshToken = readRefreshToken(loginResult);
+
+        mockMvc.perform(post("/auth/logout")
+                        .cookie(new Cookie("refreshToken", refreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("Max-Age=0")))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("Path=/auth")));
+
+        mockMvc.perform(post("/auth/refresh")
+                        .cookie(new Cookie("refreshToken", refreshToken)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false));
     }

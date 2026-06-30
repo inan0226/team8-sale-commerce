@@ -5,6 +5,7 @@ import com.example.team8salecommerce.global.exception.ErrorCode;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
@@ -20,7 +21,7 @@ public class RefreshTokenCookieProvider {
 
     public RefreshTokenCookieProvider(
             @Value("${auth.refresh-cookie.name:refreshToken}") String cookieName,
-            @Value("${auth.refresh-cookie.path:/auth/refresh}") String cookiePath,
+            @Value("${auth.refresh-cookie.path:/auth}") String cookiePath,
             @Value("${auth.refresh-cookie.secure:true}") boolean secure,
             @Value("${auth.refresh-cookie.same-site:Strict}") String sameSite
     ) {
@@ -43,18 +44,23 @@ public class RefreshTokenCookieProvider {
     }
 
     public String resolve(HttpServletRequest request) {
+        return resolveOptional(request)
+                .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED));
+    }
+
+    public Optional<String> resolveOptional(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies == null) {
-            throw new CustomException(ErrorCode.UNAUTHORIZED);
+            return Optional.empty();
         }
 
         for (Cookie cookie : cookies) {
             if (cookieName.equals(cookie.getName()) && StringUtils.hasText(cookie.getValue())) {
-                return cookie.getValue();
+                return Optional.of(cookie.getValue());
             }
         }
 
-        throw new CustomException(ErrorCode.UNAUTHORIZED);
+        return Optional.empty();
     }
 
     private ResponseCookie.ResponseCookieBuilder baseCookie(String value) {

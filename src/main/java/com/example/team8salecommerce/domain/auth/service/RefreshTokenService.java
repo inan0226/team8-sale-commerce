@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
 /**
@@ -20,6 +21,9 @@ import org.springframework.stereotype.Service;
  *
  * <p>Access Token 인증 시 매번 DB를 조회하지 않도록 로그인 시점의 인증 스냅샷을 Redis에 저장합니다.
  * 필터와 WebSocket 인터셉터는 토큰 검증 후 Redis에서 blacklist 여부와 인증 스냅샷을 한 번에 조회합니다.</p>
+ *
+ * <p>회원 권한 변경, 정지, 탈퇴처럼 로그인 세션의 권한 정보가 더 이상 유효하지 않은 기능을 추가할 때는
+ * {@link #deleteRefreshToken(Long)}을 호출해 refresh token과 인증 스냅샷을 함께 무효화해야 합니다.</p>
  *
  * <p>테스트나 로컬 환경에서 Redis가 필수가 아닌 설정일 때는 메모리 대체 저장소를 사용합니다.
  * 운영 환경에서는 Redis를 사용하는 것이 일반적입니다.</p>
@@ -32,11 +36,28 @@ public class RefreshTokenService {
     private static final String REFRESH_TOKEN_PREFIX = "auth:refresh:";
     private static final String BLACKLIST_PREFIX = "auth:blacklist:";
     private static final String AUTH_MEMBER_PREFIX = "auth:member:";
+    private static final RedisScript<String> ROTATE_REFRESH_TOKEN_SCRIPT = RedisScript.of("""
+            local storedRefreshToken = redis.call('GET', KEYS[1])
+            if not storedRefreshToken or storedRefreshToken ~= ARGV[1] then
+                return nil
+            end
+
+            local authMember = redis.call('GET', KEYS[2])
+            if not authMember then
+                return nil
+            end
+
+            redis.call('SET', KEYS[1], ARGV[2], 'PX', ARGV[3])
+            redis.call('PEXPIRE', KEYS[2], ARGV[3])
+
+            return authMember
+            """, String.class);
 
     private final StringRedisTemplate stringRedisTemplate;
     private final Map<Long, String> fallbackRefreshTokens = new ConcurrentHashMap<>();
     private final Map<String, Long> fallbackBlacklistedAccessTokens = new ConcurrentHashMap<>();
     private final Map<Long, AuthMember> fallbackAuthMembers = new ConcurrentHashMap<>();
+    private final Object fallbackSessionLock = new Object();
 
     @Value("${auth.redis-required:true}")
     private boolean redisRequired;
@@ -126,36 +147,44 @@ public class RefreshTokenService {
         }
     }
 
-    public AuthMember validateRefreshToken(Long memberId, String refreshToken) {
+    public AuthMember rotateRefreshToken(
+            Long memberId,
+            String currentRefreshToken,
+            String rotatedRefreshToken,
+            long expirationMillis
+    ) {
         try {
-            List<String> values = stringRedisTemplate.opsForValue()
-                    .multiGet(List.of(REFRESH_TOKEN_PREFIX + memberId, AUTH_MEMBER_PREFIX + memberId));
-
-            String storedRefreshToken = values == null ? null : values.get(0);
-            if (!refreshToken.equals(storedRefreshToken)) {
-                throw new CustomException(ErrorCode.INVALID_TOKEN);
-            }
-
-            String authMemberValue = values == null ? null : values.get(1);
+            String authMemberValue = stringRedisTemplate.execute(
+                    ROTATE_REFRESH_TOKEN_SCRIPT,
+                    List.of(REFRESH_TOKEN_PREFIX + memberId, AUTH_MEMBER_PREFIX + memberId),
+                    currentRefreshToken,
+                    rotatedRefreshToken,
+                    String.valueOf(expirationMillis)
+            );
             if (authMemberValue == null) {
                 throw new CustomException(ErrorCode.INVALID_TOKEN);
             }
 
             return deserializeAuthMember(authMemberValue);
         } catch (RedisConnectionFailureException exception) {
-            handleRedisFailure("리프레시 토큰 검증", exception);
+            handleRedisFailure("리프레시 토큰 원자적 교체", exception);
 
-            String storedRefreshToken = fallbackRefreshTokens.get(memberId);
-            if (!refreshToken.equals(storedRefreshToken)) {
-                throw new CustomException(ErrorCode.INVALID_TOKEN);
+            synchronized (fallbackSessionLock) {
+                String storedRefreshToken = fallbackRefreshTokens.get(memberId);
+                if (!currentRefreshToken.equals(storedRefreshToken)) {
+                    throw new CustomException(ErrorCode.INVALID_TOKEN);
+                }
+
+                AuthMember authMember = fallbackAuthMembers.get(memberId);
+                if (authMember == null) {
+                    throw new CustomException(ErrorCode.INVALID_TOKEN);
+                }
+
+                fallbackRefreshTokens.put(memberId, rotatedRefreshToken);
+                fallbackAuthMembers.put(memberId, authMember);
+
+                return authMember;
             }
-
-            AuthMember authMember = fallbackAuthMembers.get(memberId);
-            if (authMember == null) {
-                throw new CustomException(ErrorCode.INVALID_TOKEN);
-            }
-
-            return authMember;
         }
     }
 
