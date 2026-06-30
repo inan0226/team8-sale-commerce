@@ -1,6 +1,5 @@
 package com.example.team8salecommerce.domain.refund.controller;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
@@ -18,6 +17,7 @@ import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
 import com.example.team8salecommerce.global.response.ApiResponse;
 import com.example.team8salecommerce.global.security.AuthMember;
+import com.example.team8salecommerce.global.security.AuthMemberResolver;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -35,6 +35,7 @@ public class RefundController {
 
 	private final RefundFacade refundFacade;
 	private final RefundQueryService refundQueryService;
+	private final AuthMemberResolver authMemberResolver;
 
 	/**
 	 * 환불 요청 API
@@ -49,20 +50,16 @@ public class RefundController {
 		@PathVariable Long orderId,
 		@Valid @RequestBody RefundRequest request
 	) {
-		validateAuthenticatedMember(authMember);
-		validateOrderId(orderId);
+		Long memberId = authMemberResolver.requireMemberId(authMember);
+		validatePositiveId(orderId);
 
 		RefundResponse responseDto = refundFacade.requestRefund(
-			authMember.memberId(),
+			memberId,
 			orderId,
 			request
 		);
 
-		ResponseEntity<ApiResponse<RefundResponse>> response = ResponseEntity
-			.status(HttpStatus.OK)
-			.body(ApiResponse.success(responseDto));
-
-		return response;
+		return ResponseEntity.ok(ApiResponse.success(responseDto));
 	}
 
 	/**
@@ -79,44 +76,22 @@ public class RefundController {
 		@AuthenticationPrincipal AuthMember authMember,
 		@Positive @PathVariable Long refundId
 	) {
-		validateAuthenticatedMember(authMember);
-		validateRefundId(refundId);
+		Long memberId = authMemberResolver.requireMemberId(authMember);
+		validatePositiveId(refundId);
 
-		RefundResponse responseDto = refundQueryService.getRefund(authMember.memberId(), refundId);
+		RefundResponse responseDto = refundQueryService.getRefund(memberId, refundId);
 
-		ResponseEntity<ApiResponse<RefundResponse>> response = ResponseEntity
-			.status(HttpStatus.OK)
-			.body(ApiResponse.success(responseDto));
-
-		return response;
+		return ResponseEntity.ok(ApiResponse.success(responseDto));
 	}
 
 	/**
-	 * 인증된 회원 정보를 검증한다.
-	 */
-	private void validateAuthenticatedMember(AuthMember authMember) {
-		if (authMember == null) {
-			throw new CustomException(ErrorCode.UNAUTHORIZED);
-		}
-	}
-
-	/**
-	 * 주문 ID를 검증한다.
+	 * 요청 경로 ID를 검증한다.
 	 *
 	 * standalone MockMvc 환경에서는 @PathVariable의 @Positive 검증이
 	 * 기대처럼 동작하지 않을 수 있으므로 Controller에서도 명시적으로 방어한다.
 	 */
-	private void validateOrderId(Long orderId) {
-		if (orderId == null || orderId <= 0) {
-			throw new CustomException(ErrorCode.INVALID_REQUEST);
-		}
-	}
-
-	/**
-	 * 환불 ID를 검증한다.
-	 */
-	private void validateRefundId(Long refundId) {
-		if (refundId == null || refundId <= 0) {
+	private void validatePositiveId(Long id) {
+		if (id == null || id <= 0) {
 			throw new CustomException(ErrorCode.INVALID_REQUEST);
 		}
 	}

@@ -30,6 +30,15 @@ public class AuthMemberResolver {
         return authMember;
     }
 
+    public Long requireMemberId(AuthMember authMember) {
+        Long memberId = require(authMember).memberId();
+        if (memberId == null) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED);
+        }
+
+        return memberId;
+    }
+
     /**
      * STOMP 메시지에서 넘어온 Principal 안의 AuthMember를 꺼냅니다.
      *

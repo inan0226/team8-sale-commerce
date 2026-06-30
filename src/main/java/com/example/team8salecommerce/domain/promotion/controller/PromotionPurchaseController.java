@@ -12,10 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.team8salecommerce.domain.promotion.dto.PromotionPurchaseRequest;
 import com.example.team8salecommerce.domain.promotion.dto.PromotionPurchaseResponse;
 import com.example.team8salecommerce.domain.promotion.facade.PromotionPurchaseFacade;
-import com.example.team8salecommerce.global.exception.CustomException;
-import com.example.team8salecommerce.global.exception.ErrorCode;
 import com.example.team8salecommerce.global.response.ApiResponse;
 import com.example.team8salecommerce.global.security.AuthMember;
+import com.example.team8salecommerce.global.security.AuthMemberResolver;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 public class PromotionPurchaseController {
 
 	private final PromotionPurchaseFacade promotionPurchaseFacade;
+	private final AuthMemberResolver authMemberResolver;
 
 	/**
 	 * 선착순 특가 상품을 구매한다.
@@ -47,31 +47,16 @@ public class PromotionPurchaseController {
 		@PathVariable Long promotionProductId,
 		@Valid @RequestBody PromotionPurchaseRequest request
 	) {
-		validateAuthenticatedMember(authMember);
+		Long memberId = authMemberResolver.requireMemberId(authMember);
 
 		PromotionPurchaseResponse responseDto = promotionPurchaseFacade.purchase(
-			authMember.memberId(),
+			memberId,
 			promotionProductId,
 			request
 		);
 
-		ResponseEntity<ApiResponse<PromotionPurchaseResponse>> response = ResponseEntity
+		return ResponseEntity
 			.status(HttpStatus.CREATED)
 			.body(ApiResponse.success(responseDto));
-
-		return response;
-	}
-
-	/**
-	 * 인증된 회원 정보를 검증한다.
-	 *
-	 * 보안 필터에서 인증을 처리하더라도,
-	 * Controller에서 authMember가 null인 경우를 한 번 더 방어해
-	 * NullPointerException 대신 공통 인증 예외로 응답하도록 한다.
-	 */
-	private void validateAuthenticatedMember(AuthMember authMember) {
-		if (authMember == null) {
-			throw new CustomException(ErrorCode.UNAUTHORIZED);
-		}
 	}
 }

@@ -68,10 +68,10 @@ public class ChatRoomController {
             @AuthenticationPrincipal AuthMember authMember,
             @Valid @RequestBody CreateChatRoomRequest request
     ) {
-        AuthMember authenticatedMember = authMemberResolver.require(authMember);
+        Long memberId = authMemberResolver.requireMemberId(authMember);
 
         return ResponseEntity.ok(ApiResponse.success(
-                chatService.createRoom(authenticatedMember.memberId(), request)
+                chatService.createRoom(memberId, request)
         ));
     }
 
