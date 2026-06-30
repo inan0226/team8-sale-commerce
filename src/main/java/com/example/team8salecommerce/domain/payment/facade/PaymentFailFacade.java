@@ -4,7 +4,9 @@ import org.springframework.stereotype.Component;
 
 import com.example.team8salecommerce.domain.payment.dto.PaymentFailRequest;
 import com.example.team8salecommerce.domain.payment.dto.PaymentFailResponse;
+import com.example.team8salecommerce.domain.payment.entity.PaymentOrderType;
 import com.example.team8salecommerce.domain.payment.service.PaymentFailService;
+import com.example.team8salecommerce.domain.payment.service.NormalOrderPaymentFailService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class PaymentFailFacade {
 
 	private final PaymentFailService paymentFailService;
+	private final NormalOrderPaymentFailService normalOrderPaymentFailService;
 
 	/**
 	 * 결제 실패 처리
@@ -31,6 +34,10 @@ public class PaymentFailFacade {
 	 * 실제 결제 실패 처리 Service로 위임한다.
 	 */
 	public PaymentFailResponse failPayment(Long memberId, PaymentFailRequest request) {
+		if (request.orderType() == PaymentOrderType.NORMAL) {
+			return normalOrderPaymentFailService.failPayment(memberId, request);
+		}
+
 		return paymentFailService.failPayment(memberId, request);
 	}
 }

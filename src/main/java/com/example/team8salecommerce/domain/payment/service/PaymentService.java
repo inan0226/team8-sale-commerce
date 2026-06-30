@@ -1,9 +1,12 @@
 package com.example.team8salecommerce.domain.payment.service;
 
+import com.example.team8salecommerce.domain.order.entity.Order;
+import com.example.team8salecommerce.domain.order.repository.OrderRepository;
 import com.example.team8salecommerce.domain.payment.client.PortOnePaymentClient;
 import com.example.team8salecommerce.domain.payment.client.PortOnePaymentInfo;
 import com.example.team8salecommerce.domain.payment.dto.PaymentConfirmRequest;
 import com.example.team8salecommerce.domain.payment.dto.PaymentConfirmResponse;
+import com.example.team8salecommerce.domain.payment.entity.PaymentOrderType;
 import com.example.team8salecommerce.domain.promotion.entity.PromotionOrder;
 import com.example.team8salecommerce.domain.promotion.repository.PromotionOrderRepository;
 import com.example.team8salecommerce.global.exception.CustomException;
@@ -27,6 +30,8 @@ import org.springframework.stereotype.Service;
 public class PaymentService {
 
 	private final PromotionOrderRepository promotionOrderRepository;
+	private final OrderRepository orderRepository;
+	private final NormalOrderPaymentConfirmService normalOrderPaymentConfirmService;
 	private final PortOnePaymentClient portOnePaymentClient;
 	private final PaymentConfirmTransactionService paymentConfirmTransactionService;
 
@@ -41,6 +46,10 @@ public class PaymentService {
 	 */
 	public PaymentConfirmResponse confirmPayment(Long memberId, PaymentConfirmRequest request) {
 		validateMemberId(memberId);
+
+		if (request.orderType() == PaymentOrderType.NORMAL) {
+			return confirmNormalOrder(memberId, request);
+		}
 
 		PromotionOrder promotionOrder = findPromotionOrder(memberId, request.orderId());
 
@@ -133,5 +142,44 @@ public class PaymentService {
 		}
 
 		return portOnePaymentInfo;
+	}
+
+	/**
+	 * 일반 주문을 검증하고 외부 결제 조회 후 일반 주문 전용 트랜잭션 서비스로 위임한다.
+	 */
+	private PaymentConfirmResponse confirmNormalOrder(
+		Long memberId,
+		PaymentConfirmRequest request
+	) {
+		Order order = orderRepository.findByIdAndMemberId(request.orderId(), memberId)
+			.orElseThrow(() -> new CustomException(ErrorCode.ORDER_NOT_FOUND));
+
+		if (order.isPaid()) {
+			throw new CustomException(ErrorCode.PAYMENT_ALREADY_COMPLETED);
+		}
+		if (!order.isWaiting()) {
+			throw new CustomException(ErrorCode.INVALID_ORDER_STATUS);
+		}
+		if (!order.getTotalPrice().equals(request.amount())) {
+			throw new CustomException(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
+		}
+
+		PortOnePaymentInfo paymentInfo = portOnePaymentClient.getPayment(
+			request.portOnePaymentId()
+		);
+
+		if (!request.portOnePaymentId().equals(paymentInfo.paymentId())
+			|| !paymentInfo.isPaid()) {
+			throw new CustomException(ErrorCode.PAYMENT_CONFIRM_FAILED);
+		}
+		if (!order.getTotalPrice().equals(paymentInfo.totalAmount())) {
+			throw new CustomException(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
+		}
+
+		return normalOrderPaymentConfirmService.confirmPayment(
+			memberId,
+			order.getId(),
+			paymentInfo
+		);
 	}
 }

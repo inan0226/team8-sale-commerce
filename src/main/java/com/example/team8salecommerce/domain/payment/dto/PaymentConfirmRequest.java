@@ -1,5 +1,7 @@
 package com.example.team8salecommerce.domain.payment.dto;
 
+import com.example.team8salecommerce.domain.payment.entity.PaymentOrderType;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -22,6 +24,19 @@ public record PaymentConfirmRequest(
 
 	@NotNull(message = "결제 금액은 필수입니다.")
 	@Positive(message = "결제 금액은 0보다 커야 합니다.")
-	Long amount
+	Long amount,
+
+	PaymentOrderType orderType
 ) {
+	/** 유형 누락 시 기존 특가 결제로 처리한다. */
+	public PaymentConfirmRequest {
+		if (orderType == null) {
+			orderType = PaymentOrderType.PROMOTION;
+		}
+	}
+
+	/** 기존 생성자 호환성을 유지한다. */
+	public PaymentConfirmRequest(Long orderId, String portOnePaymentId, Long amount) {
+		this(orderId, portOnePaymentId, amount, PaymentOrderType.PROMOTION);
+	}
 }

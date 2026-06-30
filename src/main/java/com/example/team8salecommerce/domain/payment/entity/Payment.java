@@ -39,6 +39,11 @@ public class Payment extends BaseEntity {
 	@Column(nullable = false)
 	private Long orderId;
 
+	/** 일반 주문과 특가 주문의 같은 숫자 ID를 구분한다. */
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 20)
+	private PaymentOrderType orderType;
+
 	/**
 	 * PortOne 결제 ID
 	 *
@@ -84,6 +89,7 @@ public class Payment extends BaseEntity {
 	 */
 	private Payment(
 		Long orderId,
+		PaymentOrderType orderType,
 		String portOnePaymentId,
 		Long amount,
 		String method,
@@ -93,6 +99,7 @@ public class Payment extends BaseEntity {
 		String failureReason
 	) {
 		this.orderId = orderId;
+		this.orderType = orderType == null ? PaymentOrderType.PROMOTION : orderType;
 		this.portOnePaymentId = portOnePaymentId;
 		this.amount = amount;
 		this.method = method;
@@ -116,6 +123,7 @@ public class Payment extends BaseEntity {
 	) {
 		return new Payment(
 			orderId,
+			PaymentOrderType.PROMOTION,
 			portOnePaymentId,
 			amount,
 			method,
@@ -126,6 +134,30 @@ public class Payment extends BaseEntity {
 		);
 	}
 
+
+	/**
+	 * 주문 유형을 명시해 결제 승인 정보를 생성한다.
+	 */
+	public static Payment createPaidPayment(
+		Long orderId,
+		PaymentOrderType orderType,
+		String portOnePaymentId,
+		Long amount,
+		String method,
+		LocalDateTime paidAt
+	) {
+		return new Payment(
+			orderId,
+			orderType,
+			portOnePaymentId,
+			amount,
+			method,
+			PaymentStatus.PAID,
+			paidAt,
+			null,
+			null
+		);
+	}
 	/**
 	 * 결제 실패 결제 정보를 생성한다.
 	 *
@@ -143,6 +175,7 @@ public class Payment extends BaseEntity {
 	) {
 		return new Payment(
 			orderId,
+			PaymentOrderType.PROMOTION,
 			portOnePaymentId,
 			amount,
 			method,
@@ -153,6 +186,31 @@ public class Payment extends BaseEntity {
 		);
 	}
 
+
+	/**
+	 * 주문 유형을 명시해 결제 실패 정보를 생성한다.
+	 */
+	public static Payment createFailedPayment(
+		Long orderId,
+		PaymentOrderType orderType,
+		String portOnePaymentId,
+		Long amount,
+		String method,
+		LocalDateTime failedAt,
+		String failureReason
+	) {
+		return new Payment(
+			orderId,
+			orderType,
+			portOnePaymentId,
+			amount,
+			method,
+			PaymentStatus.FAILED,
+			null,
+			failedAt,
+			failureReason
+		);
+	}
 	public boolean isPaid() {
 		return this.status == PaymentStatus.PAID;
 	}
