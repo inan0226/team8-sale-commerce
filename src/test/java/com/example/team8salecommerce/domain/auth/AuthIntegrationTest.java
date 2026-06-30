@@ -2,14 +2,18 @@ package com.example.team8salecommerce.domain.auth;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.servlet.http.Cookie;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -86,7 +90,11 @@ class AuthIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("refreshToken=")))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("HttpOnly")))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("Secure")))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("SameSite=Strict")))
                 .andReturn();
 
         String accessToken = readAccessToken(loginResult);
@@ -136,10 +144,51 @@ class AuthIntegrationTest {
         mockMvc.perform(post("/auth/logout")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("Max-Age=0")));
 
         mockMvc.perform(get("/members/me")
                         .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void 리프레시_토큰_쿠키로_액세스_토큰을_재발급한다() throws Exception {
+        signup("refresh@example.com", "Password123!", "refresh");
+
+        MvcResult loginResult = login("refresh@example.com", "Password123!")
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String refreshToken = readRefreshToken(loginResult);
+
+        mockMvc.perform(post("/auth/refresh")
+                        .cookie(new Cookie("refreshToken", refreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("refreshToken=")));
+    }
+
+    @Test
+    void 재발급에_사용한_이전_리프레시_토큰은_다시_사용할_수_없다() throws Exception {
+        signup("refresh-rotate@example.com", "Password123!", "refresh-rotate");
+
+        MvcResult loginResult = login("refresh-rotate@example.com", "Password123!")
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String oldRefreshToken = readRefreshToken(loginResult);
+
+        mockMvc.perform(post("/auth/refresh")
+                        .cookie(new Cookie("refreshToken", oldRefreshToken)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/auth/refresh")
+                        .cookie(new Cookie("refreshToken", oldRefreshToken)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false));
     }
@@ -174,5 +223,15 @@ class AuthIntegrationTest {
         int startIndex = response.indexOf(marker) + marker.length();
         int endIndex = response.indexOf("\"", startIndex);
         return response.substring(startIndex, endIndex);
+    }
+
+    private String readRefreshToken(MvcResult loginResult) {
+        String setCookie = loginResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+        Assertions.assertThat(setCookie).isNotBlank();
+
+        String marker = "refreshToken=";
+        int startIndex = setCookie.indexOf(marker) + marker.length();
+        int endIndex = setCookie.indexOf(";", startIndex);
+        return setCookie.substring(startIndex, endIndex);
     }
 }
