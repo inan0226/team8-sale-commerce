@@ -1,33 +1,25 @@
 package com.example.team8salecommerce.domain.search.dto;
 
-import com.example.team8salecommerce.domain.product.entity.Product;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import org.springframework.data.domain.Page;
 import java.util.List;
 
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
-public class ProductSearchResponse {
-    private List<SearchProductDetailResponse> content;
-    private int page;
-    private int size;
-    private int totalPages;
-    private long totalElements;
-
-    public static ProductSearchResponse from(Page<Product> productPage) {
-        List<SearchProductDetailResponse> content = productPage.stream()
-                .map(SearchProductDetailResponse::from)
+public record ProductSearchResponse(
+    List<SearchProductDetailResponse> content,
+    int page,
+    int size,
+    int totalPages,
+    long totalElements
+) {
+    public static ProductSearchResponse from(ProductSearchCache cache) {
+        List<SearchProductDetailResponse> content = cache.getContent().stream()
+                .map(detail -> new SearchProductDetailResponse(detail.getId(), detail.getName(), detail.getPrice()))
                 .toList();
 
         return new ProductSearchResponse(
                 content,
-                productPage.getNumber(),
-                productPage.getSize(),
-                productPage.getTotalPages(),
-                productPage.getTotalElements()
+                cache.getPage(),
+                cache.getSize(),
+                cache.getTotalPages(),
+                cache.getTotalElements()
         );
     }
 }

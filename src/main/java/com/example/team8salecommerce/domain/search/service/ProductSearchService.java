@@ -2,7 +2,7 @@ package com.example.team8salecommerce.domain.search.service;
 
 import com.example.team8salecommerce.domain.product.entity.Product;
 import com.example.team8salecommerce.domain.product.repository.ProductRepository;
-import com.example.team8salecommerce.domain.search.dto.ProductSearchResponse;
+import com.example.team8salecommerce.domain.search.dto.ProductSearchCache;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -24,13 +24,13 @@ public class ProductSearchService {
             key = "#keyword + ':' + #minPrice + ':' + #maxPrice + ':' + #categoryId + ':' + #page + ':' + #size"
     )
     @Transactional(readOnly = true)
-    public ProductSearchResponse searchProducts(
+    public ProductSearchCache searchProducts(
             String keyword, Long categoryId, Long minPrice, Long maxPrice, int page, int size
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Specification<Product> spec = ProductSearchSpecification.searchProducts(keyword, categoryId, minPrice, maxPrice);
 
         Page<Product> productPage = productRepository.findAll(spec, pageable);
-        return ProductSearchResponse.from(productPage);
+        return ProductSearchCache.from(productPage);
     }
 }

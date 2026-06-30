@@ -1,6 +1,7 @@
 package com.example.team8salecommerce.domain.search.controller;
 
 import com.example.team8salecommerce.domain.product.exception.ProductException;
+import com.example.team8salecommerce.domain.search.dto.ProductSearchCache;
 import com.example.team8salecommerce.domain.search.dto.ProductSearchResponse;
 import com.example.team8salecommerce.domain.search.service.ProductSearchService;
 import com.example.team8salecommerce.domain.search.service.SearchKeywordService;
@@ -45,9 +46,10 @@ public class ProductSearchController {
             searchKeywordService.incrementKeywordCount(keyword);
         }
 
-        ProductSearchResponse response = productSearchService.searchProducts(
+        ProductSearchCache cache = productSearchService.searchProducts(
                 keyword, categoryId, minPrice, maxPrice, page, size
         );
+        ProductSearchResponse response = ProductSearchResponse.from(cache);
         return ResponseEntity.ok(ApiResponse.success("상품 검색 성공", response));
     }
 }

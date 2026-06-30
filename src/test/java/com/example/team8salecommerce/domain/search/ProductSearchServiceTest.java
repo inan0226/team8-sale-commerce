@@ -5,7 +5,7 @@ import com.example.team8salecommerce.domain.fixture.CategoryFixture;
 import com.example.team8salecommerce.domain.fixture.ProductFixture;
 import com.example.team8salecommerce.domain.product.entity.Product;
 import com.example.team8salecommerce.domain.product.repository.ProductRepository;
-import com.example.team8salecommerce.domain.search.dto.ProductSearchResponse;
+import com.example.team8salecommerce.domain.search.dto.ProductSearchCache;
 import com.example.team8salecommerce.domain.search.service.ProductSearchService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,7 +49,7 @@ class ProductSearchServiceTest {
                 .thenReturn(productPage);
 
         // when
-        ProductSearchResponse response = productSearchService.searchProducts(
+        ProductSearchCache response = productSearchService.searchProducts(
                 "에어팟", 1L, 100000L, 500000L, 0, 20
         );
 

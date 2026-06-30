@@ -75,9 +75,12 @@ public class SearchKeywordService {
                 return List.of();
             }
 
-            List<String> keywords = typedTuples.stream()
+            List<ZSetOperations.TypedTuple<String>> nonNullTuples = typedTuples.stream()
+                    .filter(tuple -> tuple.getValue() != null)
+                    .toList();
+
+            List<String> keywords = nonNullTuples.stream()
                     .map(ZSetOperations.TypedTuple::getValue)
-                    .filter(Objects::nonNull)
                     .toList();
 
             List<Object> lastSearchedTimes = stringRedisTemplate.opsForHash()
@@ -85,7 +88,7 @@ public class SearchKeywordService {
 
             List<SearchKeywordStatsResponse> response = new ArrayList<>();
             int idx = 0;
-            for (ZSetOperations.TypedTuple<String> tuple : typedTuples) {
+            for (ZSetOperations.TypedTuple<String> tuple : nonNullTuples) {
                 String keyword = tuple.getValue();
                 Double score = tuple.getScore();
                 long count = score != null ? score.longValue() : 0L;

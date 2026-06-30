@@ -37,7 +37,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/signup", "/auth/login").permitAll()
                         .requestMatchers("/ws/chat", "/ws/chat/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/products", "/products/*", "/products/search").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/categories/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/categories/*/products").permitAll()
                         .requestMatchers(HttpMethod.GET, "/search-keywords/top").permitAll()
                         .requestMatchers(HttpMethod.GET, "/search-keywords").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
