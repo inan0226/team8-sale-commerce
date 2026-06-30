@@ -1,5 +1,6 @@
 package com.example.team8salecommerce.domain.search;
 
+import com.example.team8salecommerce.domain.search.dto.ProductSearchCache;
 import com.example.team8salecommerce.domain.search.dto.ProductSearchResponse;
 import com.example.team8salecommerce.domain.search.service.ProductSearchService;
 import com.example.team8salecommerce.domain.search.service.SearchKeywordService;
@@ -42,7 +43,7 @@ class ProductSearchControllerTest {
     @Test
     @DisplayName("상품 검색 성공")
     void searchProducts_success() throws Exception {
-        ProductSearchResponse response = new ProductSearchResponse(List.of(), 0, 20, 1, 0L);
+        ProductSearchCache response = new ProductSearchCache(List.of(), 0, 20, 1, 0L);
 
         when(productSearchService.searchProducts(
                 anyString(), anyLong(), anyLong(), anyLong(), anyInt(), anyInt()
