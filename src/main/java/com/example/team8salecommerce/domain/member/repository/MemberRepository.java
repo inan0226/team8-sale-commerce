@@ -12,11 +12,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findByEmail(String email);
 
+    Optional<Member> findByEmailOrNickname(String email, String nickname);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select m from Member m where m.id = :memberId")
     Optional<Member> findByIdForUpdate(@Param("memberId") Long memberId);
 
-    boolean existsByEmail(String email);
-
-    boolean existsByNickname(String nickname);
 }

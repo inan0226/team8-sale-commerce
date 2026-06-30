@@ -11,6 +11,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,10 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class JwtTokenProvider {
+
+    private static final String TOKEN_TYPE_CLAIM = "tokenType";
+    private static final String ACCESS_TOKEN_TYPE = "ACCESS";
+    private static final String REFRESH_TOKEN_TYPE = "REFRESH";
 
     private final SecretKey secretKey;
     private final long accessTokenExpirationMillis;
@@ -52,54 +57,36 @@ public class JwtTokenProvider {
      * API 요청 인증에 사용할 Access Token을 생성합니다.
      */
     public String createAccessToken(Member member) {
-        return createToken(member, accessTokenExpirationMillis);
+        return createAccessToken(AuthMember.from(member));
+    }
+
+    public String createAccessToken(AuthMember authMember) {
+        return createToken(authMember, ACCESS_TOKEN_TYPE, accessTokenExpirationMillis);
     }
 
     /**
      * Access Token을 다시 발급받을 때 사용할 Refresh Token을 생성합니다.
      */
     public String createRefreshToken(Member member) {
-        return createToken(member, refreshTokenExpirationMillis);
+        return createRefreshToken(AuthMember.from(member));
     }
 
-    /**
-     * 토큰이 만료되었거나 위조되었는지 확인합니다.
-     *
-     * <p>문제가 있으면 {@link CustomException}을 던지고, 문제가 없으면 아무 일도 하지 않습니다.</p>
-     */
-    public void validateToken(String token) {
-        parseClaims(token);
+    public String createRefreshToken(AuthMember authMember) {
+        return createToken(authMember, REFRESH_TOKEN_TYPE, refreshTokenExpirationMillis);
     }
 
-    /**
-     * 토큰 안에 저장한 회원 ID를 꺼냅니다.
-     */
-    public Long getMemberId(String token) {
-        return parseClaims(token).get("memberId", Long.class);
+    public TokenClaims parseAccessToken(String token) {
+        Claims claims = parseClaims(token);
+        validateTokenType(claims, ACCESS_TOKEN_TYPE);
+
+        return toTokenClaims(claims);
     }
 
-    /**
-     * 토큰의 subject에 저장한 이메일을 꺼냅니다.
-     */
-    public String getEmail(String token) {
-        return parseClaims(token).getSubject();
-    }
+    public TokenClaims parseRefreshToken(String token) {
+        Claims claims = parseClaims(token);
+        validateTokenType(claims, REFRESH_TOKEN_TYPE);
 
-    /**
-     * 토큰 안에 저장한 회원 역할을 꺼냅니다.
-     */
-    public Role getRole(String token) {
-        return Role.valueOf(parseClaims(token).get("role", String.class));
-    }
-
-    /**
-     * 토큰이 만료되기까지 남은 시간을 밀리초 단위로 계산합니다.
-     *
-     * <p>로그아웃 시 Access Token을 blacklist에 넣을 때,
-     * 토큰의 남은 시간만큼만 Redis에 저장하기 위해 사용합니다.</p>
-     */
-    public long getRemainingExpirationMillis(String token) {
-        return parseClaims(token).getExpiration().getTime() - System.currentTimeMillis();
+        return toTokenClaims(claims);
     }
 
     /**
@@ -112,18 +99,35 @@ public class JwtTokenProvider {
     /**
      * Access Token과 Refresh Token이 공통으로 사용하는 실제 JWT 생성 로직입니다.
      */
-    private String createToken(Member member, long expirationMillis) {
+    private String createToken(AuthMember authMember, String tokenType, long expirationMillis) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + expirationMillis);
 
         return Jwts.builder()
-                .subject(member.getEmail())
-                .claim("memberId", member.getId())
-                .claim("role", member.getRole().name())
+                .id(UUID.randomUUID().toString())
+                .subject(authMember.email())
+                .claim("memberId", authMember.memberId())
+                .claim("role", authMember.role().name())
+                .claim(TOKEN_TYPE_CLAIM, tokenType)
                 .issuedAt(now)
                 .expiration(expiration)
                 .signWith(secretKey)
                 .compact();
+    }
+
+    private void validateTokenType(Claims claims, String expectedTokenType) {
+        if (!expectedTokenType.equals(claims.get(TOKEN_TYPE_CLAIM, String.class))) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
+        }
+    }
+
+    private TokenClaims toTokenClaims(Claims claims) {
+        return new TokenClaims(
+                claims.get("memberId", Long.class),
+                claims.getSubject(),
+                Role.valueOf(claims.get("role", String.class)),
+                claims.getExpiration().getTime()
+        );
     }
 
     /**
@@ -144,5 +148,13 @@ public class JwtTokenProvider {
         } catch (JwtException | IllegalArgumentException exception) {
             throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
+    }
+
+    public record TokenClaims(
+            Long memberId,
+            String email,
+            Role role,
+            long expiresAtMillis
+    ) {
     }
 }

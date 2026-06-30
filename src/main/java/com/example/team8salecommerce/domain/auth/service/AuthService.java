@@ -4,10 +4,12 @@ import com.example.team8salecommerce.domain.auth.dto.LoginRequest;
 import com.example.team8salecommerce.domain.auth.dto.LoginResponse;
 import com.example.team8salecommerce.domain.auth.dto.SignupRequest;
 import com.example.team8salecommerce.domain.auth.dto.SignupResponse;
+import com.example.team8salecommerce.domain.auth.dto.TokenRefreshResponse;
 import com.example.team8salecommerce.domain.member.entity.Member;
 import com.example.team8salecommerce.domain.member.repository.MemberRepository;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
+import com.example.team8salecommerce.global.security.AuthMember;
 import com.example.team8salecommerce.global.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,8 +43,7 @@ public class AuthService {
      * 이렇게 저장해야 DB가 노출되어도 실제 비밀번호를 바로 알 수 없습니다.</p>
      */
     public SignupResponse signup(SignupRequest request) {
-        validateDuplicateEmail(request.email());
-        validateDuplicateNickname(request.nickname());
+        validateDuplicateMember(request);
 
         Member member = Member.create(
                 request.email(),
@@ -59,28 +60,49 @@ public class AuthService {
      * <p>Access Token은 API 인증에 사용하고, Refresh Token은 Access Token을 다시 발급받기 위한 용도입니다.
      * 이 프로젝트에서는 Refresh Token을 Redis에 저장해 서버가 유효한 Refresh Token인지 확인할 수 있게 합니다.</p>
      */
-    public LoginResponse login(LoginRequest request) {
+    public LoginResult login(LoginRequest request) {
         Member member = memberRepository.findByEmail(request.email())
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
         validatePassword(request.password(), member.getPassword());
 
-        String accessToken = jwtTokenProvider.createAccessToken(member);
-        String refreshToken = jwtTokenProvider.createRefreshToken(member);
-        refreshTokenService.saveRefreshToken(
-                member.getId(),
+        AuthMember authMember = AuthMember.from(member);
+        String accessToken = jwtTokenProvider.createAccessToken(authMember);
+        String refreshToken = jwtTokenProvider.createRefreshToken(authMember);
+        refreshTokenService.saveLoginSession(
+                authMember,
                 refreshToken,
                 jwtTokenProvider.getRefreshTokenExpirationMillis()
         );
 
-        return new LoginResponse(
+        LoginResponse response = new LoginResponse(
                 member.getId(),
                 member.getEmail(),
                 member.getNickname(),
                 member.getRole().name(),
                 accessToken,
-                refreshToken,
                 "Bearer"
+        );
+
+        return new LoginResult(response, refreshToken, jwtTokenProvider.getRefreshTokenExpirationMillis());
+    }
+
+    public TokenRefreshResult refreshAccessToken(String refreshToken) {
+        JwtTokenProvider.TokenClaims claims = jwtTokenProvider.parseRefreshToken(refreshToken);
+        AuthMember authMember = refreshTokenService.validateRefreshToken(claims.memberId(), refreshToken);
+
+        String accessToken = jwtTokenProvider.createAccessToken(authMember);
+        String rotatedRefreshToken = jwtTokenProvider.createRefreshToken(authMember);
+        refreshTokenService.saveLoginSession(
+                authMember,
+                rotatedRefreshToken,
+                jwtTokenProvider.getRefreshTokenExpirationMillis()
+        );
+
+        return new TokenRefreshResult(
+                new TokenRefreshResponse(accessToken, "Bearer"),
+                rotatedRefreshToken,
+                jwtTokenProvider.getRefreshTokenExpirationMillis()
         );
     }
 
@@ -92,30 +114,22 @@ public class AuthService {
      * 회원의 Refresh Token도 삭제합니다.</p>
      */
     public void logout(String accessToken) {
-        jwtTokenProvider.validateToken(accessToken);
-        Long memberId = jwtTokenProvider.getMemberId(accessToken);
-        long remainingMillis = jwtTokenProvider.getRemainingExpirationMillis(accessToken);
+        JwtTokenProvider.TokenClaims claims = jwtTokenProvider.parseAccessToken(accessToken);
+        long remainingMillis = claims.expiresAtMillis() - System.currentTimeMillis();
 
         refreshTokenService.blacklistAccessToken(accessToken, remainingMillis);
-        refreshTokenService.deleteRefreshToken(memberId);
+        refreshTokenService.deleteRefreshToken(claims.memberId());
     }
 
-    /**
-     * 같은 이메일로 두 번 가입하는 것을 막습니다.
-     */
-    private void validateDuplicateEmail(String email) {
-        if (memberRepository.existsByEmail(email)) {
-            throw new CustomException(ErrorCode.DUPLICATED_EMAIL);
-        }
-    }
+    private void validateDuplicateMember(SignupRequest request) {
+        memberRepository.findByEmailOrNickname(request.email(), request.nickname())
+                .ifPresent(member -> {
+                    if (member.getEmail().equals(request.email())) {
+                        throw new CustomException(ErrorCode.DUPLICATED_EMAIL);
+                    }
 
-    /**
-     * 같은 닉네임으로 두 번 가입하는 것을 막습니다.
-     */
-    private void validateDuplicateNickname(String nickname) {
-        if (memberRepository.existsByNickname(nickname)) {
-            throw new CustomException(ErrorCode.DUPLICATED_NICKNAME);
-        }
+                    throw new CustomException(ErrorCode.DUPLICATED_NICKNAME);
+                });
     }
 
     /**

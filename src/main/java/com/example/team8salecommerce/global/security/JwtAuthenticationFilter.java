@@ -1,6 +1,5 @@
 package com.example.team8salecommerce.global.security;
 
-import com.example.team8salecommerce.domain.auth.service.RefreshTokenService;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
 import jakarta.servlet.FilterChain;
@@ -31,7 +30,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final BearerTokenResolver bearerTokenResolver;
     private final JwtAuthenticationService jwtAuthenticationService;
-    private final RefreshTokenService refreshTokenService;
 
     /**
      * 요청 하나당 한 번 실행되는 필터 메서드입니다.
@@ -50,9 +48,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             if (StringUtils.hasText(token)) {
-                if (refreshTokenService.isBlacklisted(token)) {
-                    throw new CustomException(ErrorCode.INVALID_TOKEN);
-                }
                 authenticate(token);
             }
 
