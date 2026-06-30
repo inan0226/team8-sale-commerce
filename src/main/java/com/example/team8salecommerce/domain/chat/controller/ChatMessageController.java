@@ -37,7 +37,7 @@ public class ChatMessageController {
      * <p>처리 순서는 다음과 같습니다.</p>
      * <ol>
      *     <li>STOMP CONNECT 때 저장된 Principal에서 로그인 회원을 꺼냅니다.</li>
-     *     <li>{@link ChatService#sendMessage(Long, Long, ChatMessageRequest)}에서 방 접근 권한을 확인하고 메시지를 저장합니다.</li>
+     *     <li>{@link ChatService#sendMessage(Long, Long, com.example.team8salecommerce.domain.member.entity.Role, ChatMessageRequest)}에서 방 접근 권한을 확인하고 메시지를 저장합니다.</li>
      *     <li>{@link ChatMessageBroadcaster}가 Redis Pub/Sub 또는 로컬 전송 방식으로 메시지를 전달합니다.</li>
      * </ol>
      */
@@ -47,7 +47,12 @@ public class ChatMessageController {
             Principal principal
     ) {
         AuthMember authMember = authMemberResolver.require(principal);
-        ChatMessageResponse response = chatService.sendMessage(request.chatRoomId(), authMember.memberId(), request);
+        ChatMessageResponse response = chatService.sendMessage(
+                request.chatRoomId(),
+                authMember.memberId(),
+                authMember.role(),
+                request
+        );
 
         chatMessageBroadcaster.broadcast(response);
     }

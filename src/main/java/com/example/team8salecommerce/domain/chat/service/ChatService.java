@@ -99,12 +99,12 @@ public class ChatService {
      * 닫힌 채팅방에는 메시지를 보낼 수 없도록 차단합니다.</p>
      */
     @Transactional
-    public ChatMessageResponse sendMessage(Long roomId, Long memberId, ChatMessageRequest request) {
+    public ChatMessageResponse sendMessage(Long roomId, Long memberId, Role role, ChatMessageRequest request) {
         if (!StringUtils.hasText(request.content())) {
             throw new CustomException(ErrorCode.CHAT_MESSAGE_EMPTY);
         }
 
-        ChatRoom chatRoom = findAccessibleRoom(memberId, Role.USER, roomId);
+        ChatRoom chatRoom = findAccessibleRoom(memberId, role, roomId);
         if (chatRoom.isClosed()) {
             throw new CustomException(ErrorCode.CHAT_ROOM_CLOSED);
         }
