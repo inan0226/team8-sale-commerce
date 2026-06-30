@@ -60,7 +60,7 @@ public class ChatRoom extends BaseEntity {
         }
 
         if (status == ChatRoomStatus.CLOSED) {
-            throw new IllegalStateException("Closed chat room status cannot be changed.");
+            throw new IllegalStateException("종료된 채팅방 상태는 변경할 수 없습니다.");
         }
 
         this.status = nextStatus;

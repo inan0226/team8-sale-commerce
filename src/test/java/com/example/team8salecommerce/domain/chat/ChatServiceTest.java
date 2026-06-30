@@ -122,11 +122,31 @@ class ChatServiceTest {
         when(chatRoomRepository.findById(roomId))
                 .thenReturn(Optional.of(chatRoom));
 
-        assertThatThrownBy(() -> chatService.sendMessage(roomId, otherMemberId, request))
+        assertThatThrownBy(() -> chatService.sendMessage(roomId, otherMemberId, Role.USER, request))
                 .isInstanceOf(CustomException.class)
                 .hasMessage(ErrorCode.CHAT_ACCESS_DENIED.getMessage());
 
         verify(chatMessageRepository, never()).save(any(ChatMessage.class));
+    }
+
+    @Test
+    void sendMessage_adminCanSendToMembersRoom() {
+        Long ownerId = 1L;
+        Long adminId = 99L;
+        Long roomId = 10L;
+        ChatRoom chatRoom = ChatRoom.create("general", member(ownerId));
+        Member admin = member(adminId);
+        ChatMessageRequest request = new ChatMessageRequest(roomId, "hello");
+
+        when(chatRoomRepository.findById(roomId))
+                .thenReturn(Optional.of(chatRoom));
+        when(memberRepository.findById(adminId))
+                .thenReturn(Optional.of(admin));
+        when(chatMessageRepository.save(any(ChatMessage.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThat(chatService.sendMessage(roomId, adminId, Role.ADMIN, request).senderId())
+                .isEqualTo(adminId);
     }
 
     @Test
@@ -140,7 +160,7 @@ class ChatServiceTest {
         when(chatRoomRepository.findById(roomId))
                 .thenReturn(Optional.of(chatRoom));
 
-        assertThatThrownBy(() -> chatService.sendMessage(roomId, ownerId, request))
+        assertThatThrownBy(() -> chatService.sendMessage(roomId, ownerId, Role.USER, request))
                 .isInstanceOf(CustomException.class)
                 .hasMessage(ErrorCode.CHAT_ROOM_CLOSED.getMessage());
 
