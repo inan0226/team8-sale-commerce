@@ -36,6 +36,7 @@ import com.example.team8salecommerce.domain.refund.facade.RefundFacade;
 import com.example.team8salecommerce.domain.refund.service.RefundQueryService;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.security.AuthMember;
+import com.example.team8salecommerce.global.security.AuthMemberResolver;
 
 /**
  * RefundController 테스트
@@ -60,7 +61,8 @@ class RefundControllerTest {
 
 		RefundController refundController = new RefundController(
 			refundFacade,
-			refundQueryService
+			refundQueryService,
+			new AuthMemberResolver()
 		);
 
 		LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
