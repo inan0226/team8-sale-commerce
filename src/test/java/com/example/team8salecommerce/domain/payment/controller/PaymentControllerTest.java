@@ -35,6 +35,7 @@ import com.example.team8salecommerce.domain.payment.dto.PaymentFailResponse;
 import com.example.team8salecommerce.domain.payment.facade.PaymentFailFacade;
 import com.example.team8salecommerce.domain.payment.service.PaymentService;
 import com.example.team8salecommerce.global.security.AuthMember;
+import com.example.team8salecommerce.global.security.AuthMemberResolver;
 
 /**
  * 결제 Controller 테스트
@@ -70,7 +71,8 @@ class PaymentControllerTest {
 
 		PaymentController paymentController = new PaymentController(
 			paymentService,
-			paymentFailFacade
+			paymentFailFacade,
+			new AuthMemberResolver()
 		);
 
 		mockMvc = MockMvcBuilders.standaloneSetup(paymentController)
