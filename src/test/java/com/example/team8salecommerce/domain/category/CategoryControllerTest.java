@@ -38,14 +38,14 @@ class CategoryControllerTest {
     private RedissonClient redissonClient;
 
     @Test
-    @DisplayName("카테고리별 상품 목록 조회 성공")
-    void getCategoryProducts_success() throws Exception {
+    @DisplayName("카테고리별 상품 목록 조회 성공 (이름 기준)")
+    void getCategoryProducts_byNameSuccess() throws Exception {
         CategoryProductResponse response = new CategoryProductResponse(List.of(), 0, 20, 0, 0L);
 
-        when(categoryService.getCategoryProducts(eq(1L), any()))
+        when(categoryService.getCategoryProducts(eq("전자제품"), any()))
                 .thenReturn(response);
 
-        mockMvc.perform(get("/categories/1/products"))
+        mockMvc.perform(get("/categories/전자제품/products"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("카테고리별 상품 목록 조회 성공"))
@@ -53,21 +53,14 @@ class CategoryControllerTest {
     }
 
     @Test
-    @DisplayName("존재하지 않는 카테고리 ID 조회 시 404 NOT FOUND")
-    void getCategoryProducts_notFound() throws Exception {
-        when(categoryService.getCategoryProducts(eq(999L), any()))
+    @DisplayName("존재하지 않는 카테고리 이름 조회 시 404 NOT FOUND")
+    void getCategoryProducts_byNameNotFound() throws Exception {
+        when(categoryService.getCategoryProducts(eq("없는카테고리"), any()))
                 .thenThrow(new CategoryException(ErrorCode.CATEGORY_NOT_FOUND));
 
-        mockMvc.perform(get("/categories/999/products"))
+        mockMvc.perform(get("/categories/없는카테고리/products"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("카테고리를 찾을 수 없습니다."));
-    }
-
-    @Test
-    @DisplayName("카테고리 ID가 0이면 400 Bad Request")
-    void getCategoryProducts_idZero() throws Exception {
-        mockMvc.perform(get("/categories/0/products"))
-                .andExpect(status().isBadRequest());
     }
 }

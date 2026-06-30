@@ -23,10 +23,10 @@ public class CategoryService {
     private final ProductRepository productRepository;
 
     @Transactional(readOnly = true)
-    public CategoryProductResponse getCategoryProducts(Long categoryId, Pageable pageable) {
-        if (!categoryRepository.existsById(categoryId)) {
-            throw new CategoryException(ErrorCode.CATEGORY_NOT_FOUND);
-        }
+    public CategoryProductResponse getCategoryProducts(String categoryName, Pageable pageable) {
+        com.example.team8salecommerce.domain.category.entity.Category category = categoryRepository.findByName(categoryName)
+                .orElseThrow(() -> new CategoryException(ErrorCode.CATEGORY_NOT_FOUND));
+        Long categoryId = category.getId();
 
         Page<Product> productPage = productRepository.findByCategoryIdAndIsDeletedFalse(categoryId, pageable);
         List<CategoryProductDetailResponse> content = productPage.stream()

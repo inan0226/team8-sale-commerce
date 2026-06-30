@@ -23,14 +23,14 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
-    @GetMapping("/categories/{categoryId}/products")
+    @GetMapping("/categories/{category}/products")
     public ResponseEntity<ApiResponse<CategoryProductResponse>> getCategoryProducts(
-            @PathVariable @Min(1) Long categoryId,
+            @PathVariable String category,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        CategoryProductResponse response = categoryService.getCategoryProducts(categoryId, pageable);
+        CategoryProductResponse response = categoryService.getCategoryProducts(category, pageable);
 
         return ResponseEntity.ok(ApiResponse.success("카테고리별 상품 목록 조회 성공", response));
     }
