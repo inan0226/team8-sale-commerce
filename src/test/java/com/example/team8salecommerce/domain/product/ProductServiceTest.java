@@ -110,4 +110,37 @@ class ProductServiceTest {
         assertThat(captured.getSort().getOrderFor("price")).isNotNull();
         assertThat(captured.getSort().getOrderFor("price").getDirection()).isEqualTo(Sort.Direction.ASC);
     }
+
+    @Test
+    @DisplayName("허용되지 않은 필드로 정렬을 요청하면 기본 정렬(createdAt, DESC)로 안전하게 대체된다")
+    void getProducts_invalidSortPropertyValidation() {
+        Pageable pageable = PageRequest.of(0, 20, Sort.by("invalidFieldName"));
+        Page<Product> productPage = new PageImpl<>(List.of());
+
+        org.mockito.ArgumentCaptor<Pageable> pageableCaptor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        when(productRepository.findByIsDeletedFalse(pageableCaptor.capture())).thenReturn(productPage);
+
+        productService.getProducts(pageable);
+
+        Pageable captured = pageableCaptor.getValue();
+        assertThat(captured.getSort().getOrderFor("createdAt")).isNotNull();
+        assertThat(captured.getSort().getOrderFor("createdAt").getDirection()).isEqualTo(Sort.Direction.DESC);
+        assertThat(captured.getSort().getOrderFor("invalidFieldName")).isNull();
+    }
+
+    @Test
+    @DisplayName("LATEST 정렬 값으로 요청하면 createdAt DESC 정렬로 정상 변환된다")
+    void getProducts_latestSortMappingValidation() {
+        Pageable pageable = PageRequest.of(0, 20, Sort.by("LATEST"));
+        Page<Product> productPage = new PageImpl<>(List.of());
+
+        org.mockito.ArgumentCaptor<Pageable> pageableCaptor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        when(productRepository.findByIsDeletedFalse(pageableCaptor.capture())).thenReturn(productPage);
+
+        productService.getProducts(pageable);
+
+        Pageable captured = pageableCaptor.getValue();
+        assertThat(captured.getSort().getOrderFor("createdAt")).isNotNull();
+        assertThat(captured.getSort().getOrderFor("createdAt").getDirection()).isEqualTo(Sort.Direction.DESC);
+    }
 }

@@ -50,11 +50,14 @@ public class ProductService {
     private Pageable convertPageable(Pageable pageable) {
         int size = Math.min(pageable.getPageSize(), 100);
         Sort sort = pageable.getSort();
+        Sort finalSort;
 
         if (sort.isUnsorted()) {
-            sort = Sort.by(Sort.Direction.DESC, "id");
+            finalSort = Sort.by(Sort.Direction.DESC, "createdAt");
         } else {
             List<Sort.Order> orders = new ArrayList<>();
+            boolean hasInvalidProperty = false;
+
             for (Sort.Order order : sort) {
                 String property = order.getProperty().toUpperCase();
 
@@ -72,16 +75,27 @@ public class ProductService {
                         orders.add(new Sort.Order(Sort.Direction.DESC, "name"));
                         break;
                     case "LATEST":
-                        orders.add(new Sort.Order(Sort.Direction.DESC, "id"));
+                        orders.add(new Sort.Order(Sort.Direction.DESC, "createdAt"));
                         break;
                     default:
-                        orders.add(order);
+                        String rawProperty = order.getProperty().toLowerCase();
+                        if ("price".equals(rawProperty) || "name".equals(rawProperty) || 
+                            "createdat".equals(rawProperty) || "id".equals(rawProperty)) {
+                            orders.add(order);
+                        } else {
+                            hasInvalidProperty = true;
+                        }
                         break;
                 }
             }
-            sort = Sort.by(orders);
+
+            if (hasInvalidProperty || orders.isEmpty()) {
+                finalSort = Sort.by(Sort.Direction.DESC, "createdAt");
+            } else {
+                finalSort = Sort.by(orders);
+            }
         }
 
-        return PageRequest.of(pageable.getPageNumber(), size, sort);
+        return PageRequest.of(pageable.getPageNumber(), size, finalSort);
     }
 }

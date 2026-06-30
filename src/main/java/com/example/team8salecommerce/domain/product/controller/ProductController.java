@@ -23,7 +23,7 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<ProductPageResponse>> getProducts(
-            @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         ProductPageResponse response = productService.getProducts(pageable);
         return ResponseEntity.ok(ApiResponse.success("상품 목록 조회 성공", response));
