@@ -31,7 +31,8 @@
 
 > 시스템 아키텍처 이미지를 추가할 예정입니다.
 
-<!-- 시스템 아키텍처 이미지 삽입 -->
+<img width="1672" height="941" alt="ChatGPT Image 2026년 6월 30일 오후 05_24_07" src="https://github.com/user-attachments/assets/0fbe97e9-9190-4c11-88df-d2ac7d6fa5fc" />
+
 
 Redis는 검색 결과 캐시, 인기 검색어, Refresh Token과 로그아웃 블랙리스트, 특가 상품 분산 락에 사용됩니다. MySQL 비관적 락과 Redis 분산 락을 용도에 맞게 적용해 주문·결제·환불 과정의 중복 처리와 재고 경합을 방지합니다.
 
