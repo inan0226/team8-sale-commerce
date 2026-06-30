@@ -8,7 +8,7 @@ import com.example.team8salecommerce.domain.category.service.CategoryService;
 import com.example.team8salecommerce.domain.fixture.CategoryFixture;
 import com.example.team8salecommerce.domain.fixture.ProductFixture;
 import com.example.team8salecommerce.domain.product.entity.Product;
-import com.example.team8salecommerce.domain.product.repository.ProductRepository;
+import com.example.team8salecommerce.domain.product.service.ProductService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +37,7 @@ class CategoryServiceTest {
     private CategoryRepository categoryRepository;
 
     @Mock
-    private ProductRepository productRepository;
+    private ProductService productService;
 
     @Test
     @DisplayName("카테고리별 상품 목록 조회 성공 (이름 기준)")
@@ -55,7 +55,7 @@ class CategoryServiceTest {
         Page<Product> productPage = new PageImpl<>(List.of(product), pageable, 1);
 
         when(categoryRepository.findByName(categoryParam)).thenReturn(java.util.Optional.of(category));
-        when(productRepository.findByCategoryIdAndIsDeletedFalse(categoryId, pageable)).thenReturn(productPage);
+        when(productService.getProductsByCategoryId(categoryId, pageable)).thenReturn(productPage);
 
         // when
         CategoryProductResponse response = categoryService.getCategoryProducts(categoryParam, pageable);
@@ -70,7 +70,7 @@ class CategoryServiceTest {
         assertThat(response.totalElements()).isEqualTo(1L);
 
         verify(categoryRepository).findByName(categoryParam);
-        verify(productRepository).findByCategoryIdAndIsDeletedFalse(categoryId, pageable);
+        verify(productService).getProductsByCategoryId(categoryId, pageable);
     }
 
     @Test
@@ -87,6 +87,6 @@ class CategoryServiceTest {
                 .isInstanceOf(CategoryException.class);
 
         verify(categoryRepository).findByName(categoryParam);
-        verifyNoInteractions(productRepository);
+        verifyNoInteractions(productService);
     }
 }

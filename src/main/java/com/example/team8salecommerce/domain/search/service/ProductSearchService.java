@@ -8,8 +8,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,10 +25,8 @@ public class ProductSearchService {
     public ProductSearchCache searchProducts(
             String keyword, Long categoryId, Long minPrice, Long maxPrice, int page, int size
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Specification<Product> spec = ProductSearchSpecification.searchProducts(keyword, categoryId, minPrice, maxPrice);
-
-        Page<Product> productPage = productRepository.findAll(spec, pageable);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Product> productPage = productRepository.searchProducts(keyword, categoryId, minPrice, maxPrice, pageable);
         return ProductSearchCache.from(productPage);
     }
 }
