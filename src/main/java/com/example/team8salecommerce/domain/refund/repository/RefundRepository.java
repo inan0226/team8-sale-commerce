@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.example.team8salecommerce.domain.refund.dto.RefundDetailQuery;
 import com.example.team8salecommerce.domain.refund.entity.Refund;
 import com.example.team8salecommerce.domain.refund.entity.RefundStatus;
 
@@ -49,4 +50,23 @@ public interface RefundRepository extends JpaRepository<Refund, Long> {
 		where refund.id = :id
 		""")
 	Optional<Refund> findByIdForUpdate(@Param("id") Long id);
+
+	@Query("""
+	select new com.example.team8salecommerce.domain.refund.dto.RefundDetailQuery(
+		refund.id,
+		refund.orderId,
+		refund.paymentId,
+		refund.refundAmount,
+		refund.status,
+		refund.requestedAt,
+		refund.completedAt
+	)
+	from Refund refund
+	where refund.id = :refundId
+		and refund.memberId = :memberId
+	""")
+	Optional<RefundDetailQuery> findDetailByIdAndMemberId(
+		@Param("refundId") Long refundId,
+		@Param("memberId") Long memberId
+	);
 }
