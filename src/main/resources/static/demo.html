@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <title>오늘의 특가 마켓 시연</title>
+    <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 32px;
+            background: #f7f7f8;
+            color: #222;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 24px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 20px;
+        }
+
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        input, textarea {
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 6px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        button {
+            margin-top: 14px;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #222;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        .danger {
+            background: #b42318;
+        }
+
+        .danger:hover {
+            background: #d92d20;
+        }
+
+        .success {
+            color: #067647;
+            font-weight: bold;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #eef4ff;
+            color: #3538cd;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            background: #111827;
+            color: #e5e7eb;
+            border-radius: 10px;
+            padding: 14px;
+            min-height: 180px;
+            font-size: 13px;
+            overflow: auto;
+        }
+
+        .full {
+            grid-column: 1 / -1;
+        }
+
+        .step {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+<h1>오늘의 특가 마켓 시연</h1>
+<p class="subtitle">
+    회원가입 → 로그인 → 선착순 구매 → PortOne 결제 → 결제 승인 → 환불 → 환불 조회 흐름
+</p>
+
+<div class="container">
+    <div class="card">
+        <h2>1. 인증</h2>
+
+        <label>이메일</label>
+        <input id="email" value="demo-user@example.com" />
+
+        <label>비밀번호</label>
+        <input id="password" value="password1234" type="password" />
+
+        <label>닉네임</label>
+        <input id="nickname" value="시연유저" />
+
+        <button onclick="signup()">회원가입</button>
+        <button onclick="login()">로그인</button>
+
+        <p>
+            Access Token 상태:
+            <span id="tokenStatus" class="badge">없음</span>
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>2. 선착순 구매</h2>
+
+        <label>Promotion Product ID</label>
+        <input id="promotionProductId" value="1" />
+
+        <label>수량</label>
+        <input id="quantity" value="1" type="number" />
+
+        <button onclick="purchase()">선착순 구매하기</button>
+
+        <p>주문 ID: <strong id="orderIdText">-</strong></p>
+        <p>결제 금액: <strong id="amountText">-</strong></p>
+        <p>남은 이벤트 재고: <strong id="stockText">-</strong></p>
+    </div>
+
+    <div class="card">
+        <h2>3. PortOne 결제</h2>
+
+        <label>Store ID</label>
+        <input id="storeId" value="store-15ce9dd3-38b1-45d1-a3f3-df565635c70c" />
+
+        <label>Channel Key</label>
+        <input id="channelKey" value="channel-key-5a2dbd5c-f02b-4c7f-a23e-fc4ff1b6df0c" />
+
+        <button onclick="requestPortOnePayment()">PortOne 테스트 결제하기</button>
+
+        <p>PortOne Payment ID: <strong id="portOnePaymentIdText">-</strong></p>
+    </div>
+
+    <div class="card">
+        <h2>4. 결제 승인</h2>
+
+        <button onclick="confirmPayment()">우리 서버 결제 승인하기</button>
+
+        <p>주문 상태: <strong id="orderStatusText">-</strong></p>
+        <p>결제 상태: <strong id="paymentStatusText">-</strong></p>
+        <p>Payment ID: <strong id="paymentIdText">-</strong></p>
+    </div>
+
+    <div class="card">
+        <h2>5. 환불</h2>
+
+        <label>환불 사유</label>
+        <input id="refundReasonDetail" value="시연용 PortOne 환불 테스트" />
+
+        <button class="danger" onclick="refundOrder()">환불 요청하기</button>
+
+        <p>Refund ID: <strong id="refundIdText">-</strong></p>
+        <p>환불 상태: <strong id="refundStatusText">-</strong></p>
+        <p>복구 후 재고: <strong id="restoredStockText">-</strong></p>
+    </div>
+
+    <div class="card">
+        <h2>6. 환불 상세 조회</h2>
+
+        <button onclick="getRefundDetail()">환불 상세 조회하기</button>
+
+        <p>조회 결과: <span id="refundDetailStatus" class="success">-</span></p>
+    </div>
+
+    <div class="card full">
+        <h2>시연 흐름</h2>
+        <div class="step">1. 회원가입 또는 로그인</div>
+        <div class="step">2. 선착순 구매로 주문 생성: 재고 10 → 9</div>
+        <div class="step">3. PortOne 테스트 결제창으로 7,000원 결제</div>
+        <div class="step">4. 우리 서버 결제 승인 API 호출: 주문 PAID, 결제 PAID</div>
+        <div class="step">5. 환불 요청 API 호출: PortOne 결제 취소 + 재고 복구</div>
+        <div class="step">6. 환불 상세 조회 API 호출</div>
+    </div>
+
+    <div class="card full">
+        <h2>응답 로그</h2>
+        <pre id="log">여기에 API 응답이 표시됩니다.</pre>
+    </div>
+</div>
+
+<script>
+    // Spring Boot 정적 파일로 실행하면 같은 origin이므로 빈 문자열로 둔다.
+    // 예: http://localhost:8080/demo.html
+    const BASE_URL = "";
+
+    let accessToken = "";
+    let currentOrderId = null;
+    let currentAmount = null;
+    let currentPortOnePaymentId = null;
+    let currentPaymentId = null;
+    let currentRefundId = null;
+
+    function log(title, data) {
+        document.getElementById("log").textContent =
+            `[${title}]\n` + JSON.stringify(data, null, 2);
+    }
+
+    function authHeaders() {
+        return {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`
+        };
+    }
+
+    async function request(path, options = {}) {
+        const response = await fetch(BASE_URL + path, options);
+        const text = await response.text();
+
+        let body;
+        try {
+            body = text ? JSON.parse(text) : {};
+        } catch (e) {
+            body = { raw: text };
+        }
+
+        if (!response.ok) {
+            throw {
+                status: response.status,
+                body
+            };
+        }
+
+        return body;
+    }
+
+    async function signup() {
+        try {
+            const body = {
+                email: document.getElementById("email").value,
+                password: document.getElementById("password").value,
+                nickname: document.getElementById("nickname").value
+            };
+
+            const data = await request("/auth/signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+
+            log("회원가입 성공", data);
+        } catch (error) {
+            log("회원가입 실패", error);
+            alert("이미 가입된 이메일이면 로그인으로 진행해도 됩니다.");
+        }
+    }
+
+    async function login() {
+        try {
+            const body = {
+                email: document.getElementById("email").value,
+                password: document.getElementById("password").value
+            };
+
+            const data = await request("/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+                credentials: "include"
+            });
+
+            accessToken = data.data.accessToken;
+            document.getElementById("tokenStatus").textContent = "로그인 완료";
+
+            log("로그인 성공", data);
+        } catch (error) {
+            log("로그인 실패", error);
+            alert("로그인 실패. 이메일/비밀번호를 확인해주세요.");
+        }
+    }
+
+    async function purchase() {
+        try {
+            const promotionProductId = document.getElementById("promotionProductId").value;
+            const quantity = Number(document.getElementById("quantity").value);
+
+            const data = await request(`/promotions/${promotionProductId}/purchase`, {
+                method: "POST",
+                headers: authHeaders(),
+                body: JSON.stringify({ quantity })
+            });
+
+            currentOrderId = Number(data.data.orderId);
+            currentAmount = Number(data.data.totalPrice);
+
+            document.getElementById("orderIdText").textContent = currentOrderId;
+            document.getElementById("amountText").textContent = `${currentAmount.toLocaleString()}원`;
+            document.getElementById("stockText").textContent = data.data.remainingEventStock;
+
+            log("선착순 구매 성공", {
+                response: data,
+                savedState: {
+                    currentOrderId,
+                    currentAmount,
+                    currentAmountType: typeof currentAmount
+                }
+            });
+        } catch (error) {
+            log("선착순 구매 실패", error);
+            alert(error.body?.message || "선착순 구매 실패. 로그인/이벤트 시간/재고를 확인해주세요.");
+        }
+    }
+
+    async function requestPortOnePayment() {
+        try {
+            if (!currentOrderId || !currentAmount) {
+                alert("먼저 선착순 구매를 완료해주세요.");
+                return;
+            }
+
+            const storeId = document.getElementById("storeId").value;
+            const channelKey = document.getElementById("channelKey").value;
+
+            const paymentId = `order-${currentOrderId}-${crypto.randomUUID()}`;
+
+            const response = await PortOne.requestPayment({
+                storeId,
+                channelKey,
+                paymentId,
+                orderName: "오늘의 특가 테스트 상품",
+                totalAmount: Number(currentAmount),
+                currency: "CURRENCY_KRW",
+                payMethod: "CARD"
+            });
+
+            if (response.code) {
+                currentPortOnePaymentId = null;
+                document.getElementById("portOnePaymentIdText").textContent = "-";
+
+                log("PortOne 결제 실패", {
+                    requestedPaymentId: paymentId,
+                    requestedAmount: Number(currentAmount),
+                    response
+                });
+
+                alert(response.message || "PortOne 결제가 실패했습니다.");
+                return;
+            }
+
+            // PortOne 응답에 paymentId가 있으면 그 값을 우선 사용하고,
+            // 없으면 우리가 요청에 사용한 paymentId를 그대로 사용한다.
+            currentPortOnePaymentId = response.paymentId || paymentId;
+
+            document.getElementById("portOnePaymentIdText").textContent = currentPortOnePaymentId;
+
+            log("PortOne 결제 성공", {
+                requestedPaymentId: paymentId,
+                savedPortOnePaymentId: currentPortOnePaymentId,
+                requestedAmount: Number(currentAmount),
+                response,
+                nextConfirmRequestBody: {
+                    orderId: currentOrderId,
+                    portOnePaymentId: currentPortOnePaymentId,
+                    amount: Number(currentAmount)
+                }
+            });
+        } catch (error) {
+            log("PortOne 결제 예외", error);
+            alert("PortOne 결제 중 오류가 발생했습니다.");
+        }
+    }
+
+    async function confirmPayment() {
+        try {
+            if (!currentOrderId || !currentAmount || !currentPortOnePaymentId) {
+                alert("먼저 PortOne 결제를 완료해주세요.");
+                return;
+            }
+
+            const body = {
+                orderId: Number(currentOrderId),
+                portOnePaymentId: currentPortOnePaymentId,
+                amount: Number(currentAmount)
+            };
+
+            log("결제 승인 요청 직전 값", {
+                body,
+                bodyTypes: {
+                    orderId: typeof body.orderId,
+                    portOnePaymentId: typeof body.portOnePaymentId,
+                    amount: typeof body.amount
+                }
+            });
+
+            const data = await request("/payments/confirm", {
+                method: "POST",
+                headers: authHeaders(),
+                body: JSON.stringify(body)
+            });
+
+            currentPaymentId = data.data.paymentId;
+
+            document.getElementById("orderStatusText").textContent = data.data.orderStatus;
+            document.getElementById("paymentStatusText").textContent = data.data.paymentStatus;
+            document.getElementById("paymentIdText").textContent = currentPaymentId;
+
+            log("결제 승인 성공", data);
+        } catch (error) {
+            log("결제 승인 실패", error);
+
+            const serverMessage = error.body?.message;
+            alert(serverMessage || "결제 승인 실패. 응답 로그를 확인해주세요.");
+        }
+    }
+
+    async function refundOrder() {
+        console.log("환불 버튼 클릭됨", {
+            currentOrderId,
+            currentPaymentId,
+            accessTokenExists: !!accessToken
+        });
+
+        try {
+            if (!currentOrderId) {
+                alert("먼저 결제 완료된 주문이 필요합니다.");
+                return;
+            }
+
+            const body = {
+                reasonType: "CHANGE_OF_MIND",
+                reasonDetail: document.getElementById("refundReasonDetail").value
+            };
+
+            const data = await request(`/orders/${currentOrderId}/refunds`, {
+                method: "POST",
+                headers: authHeaders(),
+                body: JSON.stringify(body)
+            });
+
+            currentRefundId = data.data.refundId;
+
+            document.getElementById("refundIdText").textContent = currentRefundId;
+            document.getElementById("refundStatusText").textContent = data.data.refundStatus;
+            document.getElementById("restoredStockText").textContent =
+                data.data.remainingEventStock ?? "-";
+
+            log("환불 성공", data);
+        } catch (error) {
+            log("환불 실패", {
+                requestBody: {
+                    orderId: currentOrderId,
+                    reasonType: "CHANGE_OF_MIND",
+                    reasonDetail: document.getElementById("refundReasonDetail").value
+                },
+                error
+            });
+
+            const serverMessage = error.body?.message;
+            alert(serverMessage || "환불 실패. 주문 상태가 PAID인지 확인해주세요.");
+        }
+    }
+
+    async function getRefundDetail() {
+        try {
+            if (!currentRefundId) {
+                alert("먼저 환불을 완료해주세요.");
+                return;
+            }
+
+            const data = await request(`/refunds/${currentRefundId}`, {
+                method: "GET",
+                headers: authHeaders()
+            });
+
+            document.getElementById("refundDetailStatus").textContent = "조회 성공";
+            log("환불 상세 조회 성공", data);
+        } catch (error) {
+            log("환불 상세 조회 실패", error);
+            alert("환불 상세 조회 실패.");
+        }
+    }
+
+    window.signup = signup;
+    window.login = login;
+    window.purchase = purchase;
+    window.requestPortOnePayment = requestPortOnePayment;
+    window.confirmPayment = confirmPayment;
+    window.refundOrder = refundOrder;
+    window.getRefundDetail = getRefundDetail;
+</script>
+</body>
+</html>
