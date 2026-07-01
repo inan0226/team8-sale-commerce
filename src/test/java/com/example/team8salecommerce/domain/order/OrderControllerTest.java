@@ -19,6 +19,7 @@ import com.example.team8salecommerce.domain.order.enumtype.OrderStatus;
 import com.example.team8salecommerce.domain.order.service.OrderService;
 import com.example.team8salecommerce.global.exception.GlobalExceptionHandler;
 import com.example.team8salecommerce.global.security.AuthMember;
+import com.example.team8salecommerce.global.security.AuthMemberResolver;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -59,7 +60,7 @@ class OrderControllerTest {
 		LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
 		validator.afterPropertiesSet();
 
-		mockMvc = MockMvcBuilders.standaloneSetup(new OrderController(orderService))
+		mockMvc = MockMvcBuilders.standaloneSetup(new OrderController(orderService, new AuthMemberResolver()))
 			.setControllerAdvice(new GlobalExceptionHandler())
 			.setCustomArgumentResolvers(createAuthMemberArgumentResolver())
 			.setValidator(validator)
