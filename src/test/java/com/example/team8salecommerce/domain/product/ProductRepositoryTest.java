@@ -8,6 +8,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.redisson.api.RedissonClient;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +25,9 @@ class ProductRepositoryTest {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @MockitoBean
+    private RedissonClient redissonClient;
 
     @Autowired
     private CategoryRepository categoryRepository;
@@ -57,6 +62,11 @@ class ProductRepositoryTest {
         Page<Product> searchByName = productRepository.searchProducts("에어팟", null, null, null, pageable);
         assertThat(searchByName.getContent()).hasSize(1);
         assertThat(searchByName.getContent().get(0).getName()).contains("에어팟");
+
+        // Case A-2: 상품명 키워드 앞뒤 공백 포함 "  에어팟 프로  " 검색 (trim 동작 검증)
+        Page<Product> searchByNameTrimmed = productRepository.searchProducts("  에어팟 프로  ", null, null, null, pageable);
+        assertThat(searchByNameTrimmed.getContent()).hasSize(1);
+        assertThat(searchByNameTrimmed.getContent().get(0).getName()).isEqualTo("에어팟 프로");
 
         // Case B: 브랜드명 키워드 "삼성" 검색
         Page<Product> searchByBrand = productRepository.searchProducts("삼성", null, null, null, pageable);

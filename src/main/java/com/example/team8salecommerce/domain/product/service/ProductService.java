@@ -79,9 +79,20 @@ public class ProductService {
                         break;
                     default:
                         String rawProperty = order.getProperty().toLowerCase();
-                        if ("price".equals(rawProperty) || "name".equals(rawProperty) || 
-                            "createdat".equals(rawProperty) || "id".equals(rawProperty)) {
-                            orders.add(order);
+                        String mappedProperty = null;
+
+                        if ("price".equals(rawProperty)) {
+                            mappedProperty = "price";
+                        } else if ("name".equals(rawProperty)) {
+                            mappedProperty = "name";
+                        } else if ("createdat".equals(rawProperty)) {
+                            mappedProperty = "createdAt";
+                        } else if ("id".equals(rawProperty)) {
+                            mappedProperty = "id";
+                        }
+
+                        if (mappedProperty != null) {
+                            orders.add(new Sort.Order(order.getDirection(), mappedProperty));
                         } else {
                             hasInvalidProperty = true;
                         }

@@ -56,10 +56,11 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         if (!StringUtils.hasText(keyword)) {
             return null;
         }
+        String trimmedKeyword = keyword.trim();
         QProduct product = QProduct.product;
-        return product.name.containsIgnoreCase(keyword)
-                .or(product.brand.containsIgnoreCase(keyword))
-                .or(product.category.name.containsIgnoreCase(keyword));
+        return product.name.containsIgnoreCase(trimmedKeyword)
+                .or(product.brand.containsIgnoreCase(trimmedKeyword))
+                .or(product.category.name.containsIgnoreCase(trimmedKeyword));
     }
 
     private BooleanExpression categoryEq(Long categoryId) {

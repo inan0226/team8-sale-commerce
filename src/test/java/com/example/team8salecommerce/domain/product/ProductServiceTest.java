@@ -143,4 +143,21 @@ class ProductServiceTest {
         assertThat(captured.getSort().getOrderFor("createdAt")).isNotNull();
         assertThat(captured.getSort().getOrderFor("createdAt").getDirection()).isEqualTo(Sort.Direction.DESC);
     }
+
+    @Test
+    @DisplayName("소문자로 된 허용 정렬 필드(createdat)로 정렬을 요청하면 엔티티 실제 필드명인 CamelCase(createdAt)로 매핑된다")
+    void getProducts_lowercaseSortPropertyMappingValidation() {
+        Pageable pageable = PageRequest.of(0, 20, Sort.by("createdat"));
+        Page<Product> productPage = new PageImpl<>(List.of());
+
+        org.mockito.ArgumentCaptor<Pageable> pageableCaptor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        when(productRepository.findByIsDeletedFalse(pageableCaptor.capture())).thenReturn(productPage);
+
+        productService.getProducts(pageable);
+
+        Pageable captured = pageableCaptor.getValue();
+        assertThat(captured.getSort().getOrderFor("createdAt")).isNotNull();
+        assertThat(captured.getSort().getOrderFor("createdAt").getDirection()).isEqualTo(Sort.Direction.ASC);
+        assertThat(captured.getSort().getOrderFor("createdat")).isNull();
+    }
 }
