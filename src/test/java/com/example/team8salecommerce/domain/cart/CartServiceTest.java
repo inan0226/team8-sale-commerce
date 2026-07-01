@@ -15,6 +15,7 @@ import com.example.team8salecommerce.domain.product.entity.Product;
 import com.example.team8salecommerce.domain.product.repository.ProductRepository;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,594 +30,532 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class CartServiceTest {
 
-    @InjectMocks
-    private CartService cartService;
+	@InjectMocks
+	private CartService cartService;
 
-    @Mock
-    private CartRepository cartRepository;
+	@Mock
+	private CartRepository cartRepository;
 
-    @Mock
-    private CartItemRepository cartItemRepository;
+	@Mock
+	private CartItemRepository cartItemRepository;
 
-    @Mock
-    private ProductRepository productRepository;
+	@Mock
+	private ProductRepository productRepository;
 
-    @Mock
-    private MemberRepository memberRepository;
+	@Mock
+	private MemberRepository memberRepository;
 
+	@Test
+	@DisplayName("장바구니에 상품을 담았습니다.")
+	void addCartItem_success() {
 
-    @Test
-    @DisplayName("장바구니에 상품을 담았습니다.")
-    void addCartItem_success() {
+		// given
+		Long memberId = 1L;
 
-        // given
-        Long memberId = 1L;
+		Member member = mock(Member.class);
 
-        Member member = mock(Member.class);
+		Cart cart = Cart.create(member);
 
-        Cart cart = Cart.create(member);
+		ReflectionTestUtils.setField(
+			cart,
+			"id",
+			1L
+		);
 
-        ReflectionTestUtils.setField(
-                cart,
-                "id",
-                1L
-        );
+		Product product = mock(Product.class);
 
-        Product product = mock(Product.class);
+		AddCartItemRequest request =
+			new AddCartItemRequest(
+				10L,
+				2
+			);
 
-        AddCartItemRequest request =
-                new AddCartItemRequest(
-                        10L,
-                        2
-                );
+		when(cartRepository.findByMemberId(memberId))
+			.thenReturn(Optional.of(cart));
 
-        when(cartRepository.findByMemberId(memberId))
-                .thenReturn(Optional.of(cart));
+		when(productRepository.findByIdAndIsDeletedFalse(10L))
+			.thenReturn(Optional.of(product));
 
-        when(memberRepository.findById(memberId))
-                .thenReturn(Optional.of(member));
+		when(product.getId()).thenReturn(10L);
+		when(product.getName()).thenReturn("키보드");
 
-        when(productRepository.findByIdAndIsDeletedFalse(10L))
-                .thenReturn(Optional.of(product));
+		when(cartItemRepository.findByCartIdAndProductIdWithActiveProduct(
+			any(),
+			any()
+		)).thenReturn(Optional.empty());
 
-        when(product.getId()).thenReturn(10L);
-        when(product.getName()).thenReturn("키보드");
+		when(cartItemRepository.save(any(CartItem.class)))
+			.thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(cartItemRepository.findByCartIdAndProductId(
-                any(),
-                any()
-        )).thenReturn(Optional.empty());
+		// when
+		CartItemResponse response =
+			cartService.addCartItem(
+				memberId,
+				request
+			);
+		// then
+		verify(cartItemRepository).save(any());
+		verify(memberRepository, never()).findById(memberId);
+
+		assertThat(response.productId())
+			.isEqualTo(10L);
+	}
+
+	@Test
+	@DisplayName("같은 상품을 다시 담으면 수량이 증가합니다")
+	void addCartItem_increaseQuantity() {
+
+		// given
+		Long memberId = 1L;
 
-        when(cartItemRepository.save(any(CartItem.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+		Member member = mock(Member.class);
 
+		Cart cart = Cart.create(member);
 
-        // when
-        CartItemResponse response =
-                cartService.addCartItem(
-                        memberId,
-                        request
-                );
-        // then
-        verify(cartItemRepository).save(any());
+		ReflectionTestUtils.setField(
+			cart,
+			"id",
+			1L
+		);
 
-        assertThat(response.productId())
-                .isEqualTo(10L);
-    }
+		Product product = mock(Product.class);
 
-    @Test
-    @DisplayName("같은 상품을 다시 담으면 수량이 증가합니다")
-    void addCartItem_increaseQuantity() {
+		CartItem cartItem =
+			CartItem.create(
+				cart,
+				product,
+				2
+			);
 
-        // given
-        Long memberId = 1L;
+		AddCartItemRequest request =
+			new AddCartItemRequest(
+				10L,
+				3
+			);
 
-        Member member = mock(Member.class);
+		when(cartRepository.findByMemberId(memberId))
+			.thenReturn(Optional.of(cart));
 
-        Cart cart = Cart.create(member);
+		when(product.getId()).thenReturn(10L);
 
-        ReflectionTestUtils.setField(
-                cart,
-                "id",
-                1L
-        );
+		when(cartItemRepository.findByCartIdAndProductIdWithActiveProduct(
+			any(),
+			any()
+		)).thenReturn(Optional.of(cartItem));
 
-        Product product = mock(Product.class);
+		// when
+		cartService.addCartItem(
+			memberId,
+			request
+		);
 
-        CartItem cartItem =
-                CartItem.create(
-                        cart,
-                        product,
-                        2
-                );
+		// then
+		assertThat(cartItem.getQuantity())
+			.isEqualTo(5);
 
-        AddCartItemRequest request =
-                new AddCartItemRequest(
-                        10L,
-                        3
-                );
+		verify(cartItemRepository, never())
+			.save(any());
+	}
 
-        when(cartRepository.findByMemberId(memberId))
-                .thenReturn(Optional.of(cart));
+	@Test
+	@DisplayName("삭제된 상품은 장바구니에 담을 수 없습니다.")
+	void addCartItem_deletedProduct_fail() {
 
-        when(memberRepository.findById(memberId))
-                .thenReturn(Optional.of(member));
+		// given
+		Long memberId = 1L;
 
-        when(productRepository.findByIdAndIsDeletedFalse(10L))
-                .thenReturn(Optional.of(product));
+		Member member = mock(Member.class);
 
-        when(product.getId()).thenReturn(10L);
+		Cart cart = Cart.create(member);
 
+		ReflectionTestUtils.setField(
+			cart,
+			"id",
+			1L
+		);
 
-        when(cartItemRepository.findByCartIdAndProductId(
-                any(),
-                any()
-        )).thenReturn(Optional.of(cartItem));
+		AddCartItemRequest request =
+			new AddCartItemRequest(
+				10L,
+				1
+			);
 
+		when(cartRepository.findByMemberId(memberId))
+			.thenReturn(Optional.of(cart));
 
-        // when
-        cartService.addCartItem(
-                memberId,
-                request
-        );
+		when(productRepository.findByIdAndIsDeletedFalse(10L))
+			.thenReturn(Optional.empty());
 
-        // then
-        assertThat(cartItem.getQuantity())
-                .isEqualTo(5);
+		// when & then
+		assertThatThrownBy(() ->
+			cartService.addCartItem(
+				memberId,
+				request
+			))
+			.isInstanceOf(CustomException.class)
+			.hasMessage(
+				ErrorCode.PRODUCT_NOT_FOUND.getMessage()
+			);
+	}
 
-        verify(cartItemRepository, never())
-                .save(any());
-    }
+	@Test
+	@DisplayName("장바구니가 없으면 생성 후 상품을 추가합니다.")
+	void addCartItem_createCart() {
 
-    @Test
-    @DisplayName("삭제된 상품은 장바구니에 담을 수 없습니다.")
-    void addCartItem_deletedProduct_fail() {
+		// given
+		Long memberId = 1L;
 
-        // given
-        Long memberId = 1L;
+		Member member = mock(Member.class);
 
-        Member member = mock(Member.class);
+		Product product = mock(Product.class);
 
-        Cart cart = Cart.create(member);
+		AddCartItemRequest request =
+			new AddCartItemRequest(
+				10L,
+				1
+			);
 
+		when(cartRepository.findByMemberId(memberId))
+			.thenReturn(Optional.empty());
 
-        ReflectionTestUtils.setField(
-                cart,
-                "id",
-                1L
-        );
+		when(memberRepository.findById(memberId))
+			.thenReturn(Optional.of(member));
 
-        AddCartItemRequest request =
-                new AddCartItemRequest(
-                        10L,
-                        1
-                );
+		when(productRepository.findByIdAndIsDeletedFalse(10L))
+			.thenReturn(Optional.of(product));
 
-        when(cartRepository.findByMemberId(memberId))
-                .thenReturn(Optional.of(cart));
+		when(product.getId()).thenReturn(10L);
 
-        when(memberRepository.findById(memberId))
-                .thenReturn(Optional.of(member));
+		when(cartRepository.save(any(Cart.class)))
+			.thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(productRepository.findByIdAndIsDeletedFalse(10L))
-                .thenReturn(Optional.empty());
+		when(cartItemRepository.save(any(CartItem.class)))
+			.thenAnswer(invocation -> invocation.getArgument(0));
 
+		// when
+		cartService.addCartItem(
+			memberId,
+			request
+		);
 
-        // when & then
-        assertThatThrownBy(() ->
-                cartService.addCartItem(
-                        memberId,
-                        request
-                ))
-                .isInstanceOf(CustomException.class)
-                .hasMessage(
-                        ErrorCode.PRODUCT_NOT_FOUND.getMessage()
-                );
-    }
+		// then
+		verify(cartRepository).save(any(Cart.class));
+	}
 
-    @Test
-    @DisplayName("장바구니가 없으면 생성 후 상품을 추가합니다.")
-    void addCartItem_createCart() {
+	@Test
+	@DisplayName("장바구니 조회에 성공하였습니다.")
+	void getCart_success() {
 
-        // given
-        Long memberId = 1L;
+		// given
+		Long memberId = 1L;
 
-        Member member = mock(Member.class);
+		Member member = mock(Member.class);
 
-        Product product = mock(Product.class);
+		Cart cart = Cart.create(member);
 
-        AddCartItemRequest request =
-                new AddCartItemRequest(
-                        10L,
-                        1
-                );
+		ReflectionTestUtils.setField(
+			cart,
+			"id",
+			1L
+		);
 
-        when(cartRepository.findByMemberId(memberId))
-                .thenReturn(Optional.empty());
+		Product product = mock(Product.class);
 
-        when(memberRepository.findById(memberId))
-                .thenReturn(Optional.of(member));
+		when(product.getId()).thenReturn(10L);
+		when(product.getName()).thenReturn("키보드");
+		when(product.getPrice()).thenReturn(10000L);
 
+		CartItem cartItem =
+			CartItem.create(
+				cart,
+				product,
+				2
+			);
 
-        when(productRepository.findByIdAndIsDeletedFalse(10L))
-                .thenReturn(Optional.of(product));
+		when(cartRepository.findByMemberId(memberId))
+			.thenReturn(Optional.of(cart));
 
-        when(product.getId()).thenReturn(10L);
+		when(cartItemRepository.findActiveCartItems(1L))
+			.thenReturn(List.of(cartItem));
 
-        when(cartItemRepository.findByCartIdAndProductId(
-                any(),
-                any()
-        )).thenReturn(Optional.empty());
+		// when
+		CartResponse response =
+			cartService.getCart(memberId);
 
+		// then
+		assertThat(response.items())
+			.hasSize(1);
 
-        when(cartRepository.save(any(Cart.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+		assertThat(response.totalPrice())
+			.isEqualTo(20000L);
+	}
 
-        when(cartItemRepository.save(any(CartItem.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+	@Test
+	@DisplayName("장바구니 상품의 수량을 변경하였습니다.")
+	void updateCartItemQuantity_success() {
 
+		// given
+		Long memberId = 1L;
+		Long cartItemId = 1L;
 
-        // when
-        cartService.addCartItem(
-                memberId,
-                request
-        );
+		Member member = mock(Member.class);
 
-        // then
-        verify(cartRepository).save(any(Cart.class));
-    }
+		Cart cart = Cart.create(member);
+		ReflectionTestUtils.setField(cart, "id", 1L);
 
-    @Test
-    @DisplayName("장바구니 조회에 성공하였습니다.")
-    void getCart_success() {
+		Product product = mock(Product.class);
 
-        // given
-        Long memberId = 1L;
+		CartItem cartItem = CartItem.create(
+			cart,
+			product,
+			2
+		);
 
-        Member member = mock(Member.class);
+		ReflectionTestUtils.setField(cartItem, "id", cartItemId);
 
-        Cart cart = Cart.create(member);
+		UpdateCartItemRequest request =
+			new UpdateCartItemRequest(5);
 
-        ReflectionTestUtils.setField(
-                cart,
-                "id",
-                1L
-        );
+		when(cartRepository.findByMemberId(memberId))
+			.thenReturn(Optional.of(cart));
 
-        Product product = mock(Product.class);
+		when(cartItemRepository.findByIdAndDeletedAtIsNull(cartItemId))
+			.thenReturn(Optional.of(cartItem));
 
-        when(product.getId()).thenReturn(10L);
-        when(product.getName()).thenReturn("키보드");
-        when(product.getPrice()).thenReturn(10000L);
+		when(product.getId()).thenReturn(10L);
+		when(product.getName()).thenReturn("키보드");
 
-        CartItem cartItem =
-                CartItem.create(
-                        cart,
-                        product,
-                        2
-                );
+		// when
+		CartItemResponse response =
+			cartService.updateCartItemQuantity(
+				memberId,
+				cartItemId,
+				request
+			);
+		// then
+		assertThat(cartItem.getQuantity()).isEqualTo(5);
+		assertThat(response.quantity()).isEqualTo(5);
+	}
 
-        when(cartRepository.findByMemberId(memberId))
-                .thenReturn(Optional.of(cart));
+	@Test
+	@DisplayName("존재하지 않는 장바구니 상품은 수량을 변경할 수 없습니다.")
+	void updateCartItemQuantity_cartItemNotFound() {
 
-        when(memberRepository.findById(memberId))
-                .thenReturn(Optional.of(member));
+		// given
+		Long memberId = 1L;
+		Long cartItemId = 1L;
 
-        when(cartItemRepository.findActiveCartItems(1L))
-                .thenReturn(List.of(cartItem));
+		Member member = mock(Member.class);
 
+		Cart cart = Cart.create(member);
 
-        // when
-        CartResponse response =
-                cartService.getCart(memberId);
+		when(cartRepository.findByMemberId(memberId))
+			.thenReturn(Optional.of(cart));
 
-        // then
-        assertThat(response.items())
-                .hasSize(1);
+		when(cartItemRepository.findByIdAndDeletedAtIsNull(cartItemId))
+			.thenReturn(Optional.empty());
 
-        assertThat(response.totalPrice())
-                .isEqualTo(20000L);
-    }
+		// when & then
+		assertThatThrownBy(() ->
+			cartService.updateCartItemQuantity(
+				memberId,
+				cartItemId,
+				new UpdateCartItemRequest(3)
+			))
+			.isInstanceOf(CustomException.class)
+			.hasMessage(ErrorCode.CART_ITEM_NOT_FOUND.getMessage());
+	}
 
-    @Test
-    @DisplayName("장바구니 상품의 수량을 변경하였습니다.")
-    void updateCartItemQuantity_success() {
+	@Test
+	@DisplayName("다른 회원의 장바구니 상품은 수정할 수 없습니다.")
+	void updateCartItemQuantity_forbidden() {
 
-        // given
-        Long memberId = 1L;
-        Long cartItemId = 1L;
+		// given
+		Long memberId = 1L;
 
-        Member member = mock(Member.class);
+		Member member = mock(Member.class);
 
-        Cart cart = Cart.create(member);
-        ReflectionTestUtils.setField(cart, "id", 1L);
+		Cart myCart = Cart.create(member);
+		ReflectionTestUtils.setField(myCart, "id", 1L);
 
-        Product product = mock(Product.class);
+		Cart anotherCart = Cart.create(member);
+		ReflectionTestUtils.setField(anotherCart, "id", 2L);
 
-        CartItem cartItem = CartItem.create(
-                cart,
-                product,
-                2
-        );
+		Product product = mock(Product.class);
 
-        ReflectionTestUtils.setField(cartItem, "id", cartItemId);
+		CartItem cartItem =
+			CartItem.create(
+				anotherCart,
+				product,
+				2
+			);
 
-        UpdateCartItemRequest request =
-                new UpdateCartItemRequest(5);
+		when(cartRepository.findByMemberId(memberId))
+			.thenReturn(Optional.of(myCart));
 
-        when(memberRepository.findById(memberId))
-                .thenReturn(Optional.of(member));
+		when(cartItemRepository.findByIdAndDeletedAtIsNull(1L))
+			.thenReturn(Optional.of(cartItem));
 
-        when(cartRepository.findByMemberId(memberId))
-                .thenReturn(Optional.of(cart));
+		// when & then
+		assertThatThrownBy(() ->
+			cartService.updateCartItemQuantity(
+				memberId,
+				1L,
+				new UpdateCartItemRequest(3)
+			))
+			.isInstanceOf(CustomException.class)
+			.hasMessage(ErrorCode.FORBIDDEN.getMessage());
+	}
 
-        when(cartItemRepository.findByIdAndDeletedAtIsNull(cartItemId))
-                .thenReturn(Optional.of(cartItem));
+	@Test
+	@DisplayName("장바구니 상품을 삭제하였습니다.")
+	void deleteCartItem_success() {
 
-        when(member.getId())
-                .thenReturn(memberId);
+		// given
+		Long memberId = 1L;
 
-        when(product.getId()).thenReturn(10L);
-        when(product.getName()).thenReturn("키보드");
+		Member member = mock(Member.class);
 
-        // when
-        CartItemResponse response =
-                cartService.updateCartItemQuantity(
-                        memberId,
-                        cartItemId,
-                        request
-                );
-        // then
-        assertThat(cartItem.getQuantity()).isEqualTo(5);
-        assertThat(response.quantity()).isEqualTo(5);
-    }
+		Cart cart = Cart.create(member);
+		ReflectionTestUtils.setField(cart, "id", 1L);
 
-    @Test
-    @DisplayName("존재하지 않는 장바구니 상품은 수량을 변경할 수 없습니다.")
-    void updateCartItemQuantity_cartItemNotFound() {
+		Product product = mock(Product.class);
 
-        // given
-        Long memberId = 1L;
-        Long cartItemId = 1L;
+		CartItem cartItem =
+			CartItem.create(
+				cart,
+				product,
+				2
+			);
 
-        Member member = mock(Member.class);
+		when(cartRepository.findByMemberId(memberId))
+			.thenReturn(Optional.of(cart));
 
-        Cart cart = Cart.create(member);
+		when(cartItemRepository.findByIdAndDeletedAtIsNull(1L))
+			.thenReturn(Optional.of(cartItem));
 
-        when(memberRepository.findById(memberId))
-                .thenReturn(Optional.of(member));
+		// when
+		cartService.deleteCartItem(
+			memberId,
+			1L
+		);
 
-        when(cartRepository.findByMemberId(memberId))
-                .thenReturn(Optional.of(cart));
+		// then
+		assertThat(cartItem.isDeleted()).isTrue();
+	}
 
-        when(cartItemRepository.findByIdAndDeletedAtIsNull(cartItemId))
-                .thenReturn(Optional.empty());
+	@Test
+	@DisplayName("존재하지 않는 장바구니 상품은 삭제할 수 없습니다.")
+	void deleteCartItem_notFound() {
 
-        when(member.getId())
-                .thenReturn(memberId);
+		// given
+		Long memberId = 1L;
 
-        // when & then
-        assertThatThrownBy(() ->
-                cartService.updateCartItemQuantity(
-                        memberId,
-                        cartItemId,
-                        new UpdateCartItemRequest(3)
-                ))
-                .isInstanceOf(CustomException.class)
-                .hasMessage(ErrorCode.CART_ITEM_NOT_FOUND.getMessage());
-    }
+		Member member = mock(Member.class);
 
-    @Test
-    @DisplayName("다른 회원의 장바구니 상품은 수정할 수 없습니다.")
-    void updateCartItemQuantity_forbidden() {
+		Cart cart = Cart.create(member);
 
-        // given
-        Long memberId = 1L;
+		when(cartRepository.findByMemberId(memberId))
+			.thenReturn(Optional.of(cart));
 
-        Member member = mock(Member.class);
+		when(cartItemRepository.findByIdAndDeletedAtIsNull(1L))
+			.thenReturn(Optional.empty());
 
-        Cart myCart = Cart.create(member);
-        ReflectionTestUtils.setField(myCart, "id", 1L);
+		// when & then
+		assertThatThrownBy(() ->
+			cartService.deleteCartItem(
+				memberId,
+				1L
+			))
+			.isInstanceOf(CustomException.class)
+			.hasMessage(ErrorCode.CART_ITEM_NOT_FOUND.getMessage());
+	}
 
-        Cart anotherCart = Cart.create(member);
-        ReflectionTestUtils.setField(anotherCart, "id", 2L);
+	@Test
+	@DisplayName("다른 회원의 장바구니 상품은 삭제할 수 없습니다.")
+	void deleteCartItem_forbidden() {
 
-        Product product = mock(Product.class);
+		// given
+		Long memberId = 1L;
 
-        CartItem cartItem =
-                CartItem.create(
-                        anotherCart,
-                        product,
-                        2
-                );
+		Member member = mock(Member.class);
 
-        when(memberRepository.findById(memberId))
-                .thenReturn(Optional.of(member));
+		Cart myCart = Cart.create(member);
+		ReflectionTestUtils.setField(myCart, "id", 1L);
 
-        when(cartRepository.findByMemberId(memberId))
-                .thenReturn(Optional.of(myCart));
+		Cart anotherCart = Cart.create(member);
+		ReflectionTestUtils.setField(anotherCart, "id", 2L);
 
-        when(cartItemRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(cartItem));
+		Product product = mock(Product.class);
 
-        when(member.getId())
-                .thenReturn(memberId);
+		CartItem cartItem =
+			CartItem.create(
+				anotherCart,
+				product,
+				2
+			);
 
-        // when & then
-        assertThatThrownBy(() ->
-                cartService.updateCartItemQuantity(
-                        memberId,
-                        1L,
-                        new UpdateCartItemRequest(3)
-                ))
-                .isInstanceOf(CustomException.class)
-                .hasMessage(ErrorCode.FORBIDDEN.getMessage());
-    }
+		when(cartRepository.findByMemberId(memberId))
+			.thenReturn(Optional.of(myCart));
 
-    @Test
-    @DisplayName("장바구니 상품을 삭제하였습니다.")
-    void deleteCartItem_success() {
+		when(cartItemRepository.findByIdAndDeletedAtIsNull(1L))
+			.thenReturn(Optional.of(cartItem));
 
-        // given
-        Long memberId = 1L;
+		// when & then
+		assertThatThrownBy(() ->
+			cartService.deleteCartItem(
+				memberId,
+				1L
+			))
+			.isInstanceOf(CustomException.class)
+			.hasMessage(ErrorCode.FORBIDDEN.getMessage());
+	}
 
-        Member member = mock(Member.class);
+	@Test
+	@DisplayName("장바구니가 없으면 빈 장바구니를 반환합니다.")
+	void getCart_emptyCart() {
 
-        Cart cart = Cart.create(member);
-        ReflectionTestUtils.setField(cart, "id", 1L);
+		// given
+		Long memberId = 1L;
 
-        Product product = mock(Product.class);
+		Member member = mock(Member.class);
 
-        CartItem cartItem =
-                CartItem.create(
-                        cart,
-                        product,
-                        2
-                );
+		when(memberRepository.findById(memberId))
+			.thenReturn(Optional.of(member));
 
-        when(memberRepository.findById(memberId))
-                .thenReturn(Optional.of(member));
+		when(cartRepository.findByMemberId(memberId))
+			.thenReturn(Optional.empty());
 
-        when(cartRepository.findByMemberId(memberId))
-                .thenReturn(Optional.of(cart));
+		// when
+		CartResponse response =
+			cartService.getCart(memberId);
 
-        when(cartItemRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(cartItem));
+		// then
+		assertThat(response.cartId()).isNull();
+		assertThat(response.items()).isEmpty();
+		assertThat(response.totalPrice()).isEqualTo(0L);
+	}
 
-        when(member.getId())
-                .thenReturn(memberId);
+	@Test
+	@DisplayName("존재하지 않는 회원은 장바구니를 조회할 수 없습니다.")
+	void getCart_memberNotFound() {
 
-        // when
-        cartService.deleteCartItem(
-                memberId,
-                1L
-        );
+		Long memberId = 1L;
 
-        // then
-        assertThat(cartItem.isDeleted()).isTrue();
-    }
+		when(memberRepository.findById(memberId))
+			.thenReturn(Optional.empty());
 
-    @Test
-    @DisplayName("존재하지 않는 장바구니 상품은 삭제할 수 없습니다.")
-    void deleteCartItem_notFound() {
-
-        // given
-        Long memberId = 1L;
-
-        Member member = mock(Member.class);
-
-        Cart cart = Cart.create(member);
-
-        when(memberRepository.findById(memberId))
-                .thenReturn(Optional.of(member));
-
-        when(cartRepository.findByMemberId(memberId))
-                .thenReturn(Optional.of(cart));
-
-        when(cartItemRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.empty());
-
-        when(member.getId())
-                .thenReturn(memberId);
-
-        // when & then
-        assertThatThrownBy(() ->
-                cartService.deleteCartItem(
-                        memberId,
-                        1L
-                ))
-                .isInstanceOf(CustomException.class)
-                .hasMessage(ErrorCode.CART_ITEM_NOT_FOUND.getMessage());
-    }
-
-    @Test
-    @DisplayName("다른 회원의 장바구니 상품은 삭제할 수 없습니다.")
-    void deleteCartItem_forbidden() {
-
-        // given
-        Long memberId = 1L;
-
-        Member member = mock(Member.class);
-
-        Cart myCart = Cart.create(member);
-        ReflectionTestUtils.setField(myCart, "id", 1L);
-
-        Cart anotherCart = Cart.create(member);
-        ReflectionTestUtils.setField(anotherCart, "id", 2L);
-
-        Product product = mock(Product.class);
-
-        CartItem cartItem =
-                CartItem.create(
-                        anotherCart,
-                        product,
-                        2
-                );
-
-        when(memberRepository.findById(memberId))
-                .thenReturn(Optional.of(member));
-
-        when(cartRepository.findByMemberId(memberId))
-                .thenReturn(Optional.of(myCart));
-
-        when(cartItemRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(cartItem));
-
-        when(member.getId())
-                .thenReturn(memberId);
-
-        // when & then
-        assertThatThrownBy(() ->
-                cartService.deleteCartItem(
-                        memberId,
-                        1L
-                ))
-                .isInstanceOf(CustomException.class)
-                .hasMessage(ErrorCode.FORBIDDEN.getMessage());
-    }
-
-    @Test
-    @DisplayName("장바구니가 없으면 빈 장바구니를 반환합니다.")
-    void getCart_emptyCart() {
-
-        // given
-        Long memberId = 1L;
-
-        Member member = mock(Member.class);
-
-        when(memberRepository.findById(memberId))
-                .thenReturn(Optional.of(member));
-
-        when(cartRepository.findByMemberId(memberId))
-                .thenReturn(Optional.empty());
-
-        // when
-        CartResponse response =
-                cartService.getCart(memberId);
-
-        // then
-        assertThat(response.cartId()).isNull();
-        assertThat(response.items()).isEmpty();
-        assertThat(response.totalPrice()).isEqualTo(0L);
-    }
-
-    @Test
-    @DisplayName("존재하지 않는 회원은 장바구니를 조회할 수 없습니다.")
-    void getCart_memberNotFound() {
-
-        Long memberId = 1L;
-
-        when(memberRepository.findById(memberId))
-                .thenReturn(Optional.empty());
-
-        assertThatThrownBy(() ->
-                cartService.getCart(memberId))
-                .isInstanceOf(CustomException.class)
-                .hasMessage(ErrorCode.MEMBER_NOT_FOUND.getMessage());
-    }
+		assertThatThrownBy(() ->
+			cartService.getCart(memberId))
+			.isInstanceOf(CustomException.class)
+			.hasMessage(ErrorCode.MEMBER_NOT_FOUND.getMessage());
+	}
 }
