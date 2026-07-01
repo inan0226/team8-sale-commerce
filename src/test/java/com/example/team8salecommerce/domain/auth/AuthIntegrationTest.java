@@ -183,6 +183,24 @@ class AuthIntegrationTest {
     }
 
     @Test
+    void 리프레시_요청은_잘못된_Authorization_헤더가_있어도_리프레시_쿠키로_처리한다() throws Exception {
+        signup("refresh-invalid-header@example.com", "Password123!", "refresh-invalid-header");
+
+        MvcResult loginResult = login("refresh-invalid-header@example.com", "Password123!")
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String refreshToken = readRefreshToken(loginResult);
+
+        mockMvc.perform(post("/auth/refresh")
+                        .header("Authorization", "Bearer invalid.token.value")
+                        .cookie(new Cookie("refreshToken", refreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").isNotEmpty());
+    }
+
+    @Test
     void 재발급에_사용한_이전_리프레시_토큰은_다시_사용할_수_없다() throws Exception {
         signup("refresh-rotate@example.com", "Password123!", "refresh-rotate");
 
@@ -198,6 +216,29 @@ class AuthIntegrationTest {
 
         mockMvc.perform(post("/auth/refresh")
                         .cookie(new Cookie("refreshToken", oldRefreshToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void 로그아웃_요청은_잘못된_Authorization_헤더가_있어도_리프레시_쿠키로_처리한다() throws Exception {
+        signup("logout-invalid-header@example.com", "Password123!", "logout-invalid-header");
+
+        MvcResult loginResult = login("logout-invalid-header@example.com", "Password123!")
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String refreshToken = readRefreshToken(loginResult);
+
+        mockMvc.perform(post("/auth/logout")
+                        .header("Authorization", "Bearer invalid.token.value")
+                        .cookie(new Cookie("refreshToken", refreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("Max-Age=0")));
+
+        mockMvc.perform(post("/auth/refresh")
+                        .cookie(new Cookie("refreshToken", refreshToken)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false));
     }

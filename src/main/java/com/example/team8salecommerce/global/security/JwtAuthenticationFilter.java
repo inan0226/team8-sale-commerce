@@ -28,8 +28,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String AUTH_REFRESH_PATH = "/auth/refresh";
+    private static final String AUTH_LOGOUT_PATH = "/auth/logout";
+
     private final BearerTokenResolver bearerTokenResolver;
     private final JwtAuthenticationService jwtAuthenticationService;
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return AUTH_REFRESH_PATH.equals(path) || AUTH_LOGOUT_PATH.equals(path);
+    }
 
     /**
      * 요청 하나당 한 번 실행되는 필터 메서드입니다.
