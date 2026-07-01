@@ -5,7 +5,7 @@ import com.example.team8salecommerce.domain.category.dto.CategoryProductResponse
 import com.example.team8salecommerce.domain.category.exception.CategoryException;
 import com.example.team8salecommerce.domain.category.repository.CategoryRepository;
 import com.example.team8salecommerce.domain.product.entity.Product;
-import com.example.team8salecommerce.domain.product.repository.ProductRepository;
+import com.example.team8salecommerce.domain.product.service.ProductService;
 import com.example.team8salecommerce.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,7 +20,7 @@ import java.util.List;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
-    private final ProductRepository productRepository;
+    private final ProductService productService;
 
     @Transactional(readOnly = true)
     public CategoryProductResponse getCategoryProducts(String categoryName, Pageable pageable) {
@@ -28,7 +28,7 @@ public class CategoryService {
                 .orElseThrow(() -> new CategoryException(ErrorCode.CATEGORY_NOT_FOUND));
         Long categoryId = category.getId();
 
-        Page<Product> productPage = productRepository.findByCategoryIdAndIsDeletedFalse(categoryId, pageable);
+        Page<Product> productPage = productService.getProductsByCategoryId(categoryId, pageable);
         List<CategoryProductDetailResponse> content = productPage.stream()
                 .map(CategoryProductDetailResponse::from)
                 .toList();

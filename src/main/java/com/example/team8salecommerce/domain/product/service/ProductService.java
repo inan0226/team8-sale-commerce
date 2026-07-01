@@ -1,19 +1,22 @@
 package com.example.team8salecommerce.domain.product.service;
 
-import com.example.team8salecommerce.domain.product.enumtype.ProductSortType;
-import com.example.team8salecommerce.domain.product.dto.ProductPageResponse;
-import com.example.team8salecommerce.domain.product.repository.ProductRepository;
 import com.example.team8salecommerce.domain.product.dto.ProductDetailResponse;
+import com.example.team8salecommerce.domain.product.dto.ProductPageResponse;
 import com.example.team8salecommerce.domain.product.entity.Product;
-import com.example.team8salecommerce.global.exception.ErrorCode;
 import com.example.team8salecommerce.domain.product.exception.ProductException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.example.team8salecommerce.domain.product.repository.ProductRepository;
+import com.example.team8salecommerce.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -23,35 +26,87 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     @Transactional(readOnly = true)
-    public ProductPageResponse getProducts(int page, int size, ProductSortType sort) {
-
-        var sortOption = switch (sort) {
-            case PRICE_ASC -> org.springframework.data.domain.Sort.by("price").ascending();
-            case PRICE_DESC -> org.springframework.data.domain.Sort.by("price").descending();
-            case NAME_ASC -> org.springframework.data.domain.Sort.by("name").ascending();
-            case NAME_DESC -> org.springframework.data.domain.Sort.by("name").descending();
-            default -> org.springframework.data.domain.Sort.by("createdAt").descending();
-        };
-
+    public ProductPageResponse getProducts(Pageable pageable) {
         log.info("상품 목록 조회 시작");
-
-        Pageable pageable = PageRequest.of(page, size, sortOption);
-
-        Page<Product> productPage =
-                productRepository.findByIsDeletedFalse(pageable);
-
+        Pageable resolvedPageable = convertPageable(pageable);
+        Page<Product> productPage = productRepository.findByIsDeletedFalse(resolvedPageable);
         log.info("상품 목록 조회 완료");
-
         return ProductPageResponse.from(productPage);
     }
 
-
     @Transactional(readOnly = true)
     public ProductDetailResponse getProductDetail(Long productId) {
-
         Product product = productRepository.findByIdWithCategory(productId)
                 .orElseThrow(() -> new ProductException(ErrorCode.PRODUCT_NOT_FOUND));
-
         return ProductDetailResponse.from(product);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Product> getProductsByCategoryId(Long categoryId, Pageable pageable) {
+        Pageable resolvedPageable = convertPageable(pageable);
+        return productRepository.findByCategoryIdAndIsDeletedFalse(categoryId, resolvedPageable);
+    }
+
+    private Pageable convertPageable(Pageable pageable) {
+        int size = Math.min(pageable.getPageSize(), 100);
+        Sort sort = pageable.getSort();
+        Sort finalSort;
+
+        if (sort.isUnsorted()) {
+            finalSort = Sort.by(Sort.Direction.DESC, "createdAt");
+        } else {
+            List<Sort.Order> orders = new ArrayList<>();
+            boolean hasInvalidProperty = false;
+
+            for (Sort.Order order : sort) {
+                String property = order.getProperty().toUpperCase();
+
+                switch (property) {
+                    case "PRICE_ASC":
+                        orders.add(new Sort.Order(Sort.Direction.ASC, "price"));
+                        break;
+                    case "PRICE_DESC":
+                        orders.add(new Sort.Order(Sort.Direction.DESC, "price"));
+                        break;
+                    case "NAME_ASC":
+                        orders.add(new Sort.Order(Sort.Direction.ASC, "name"));
+                        break;
+                    case "NAME_DESC":
+                        orders.add(new Sort.Order(Sort.Direction.DESC, "name"));
+                        break;
+                    case "LATEST":
+                        orders.add(new Sort.Order(Sort.Direction.DESC, "createdAt"));
+                        break;
+                    default:
+                        String rawProperty = order.getProperty().toLowerCase();
+                        String mappedProperty = null;
+
+                        if ("price".equals(rawProperty)) {
+                            mappedProperty = "price";
+                        } else if ("name".equals(rawProperty)) {
+                            mappedProperty = "name";
+                        } else if ("createdat".equals(rawProperty)) {
+                            mappedProperty = "createdAt";
+                        } else if ("id".equals(rawProperty)) {
+                            mappedProperty = "id";
+                        }
+
+                        if (mappedProperty != null) {
+                            orders.add(new Sort.Order(order.getDirection(), mappedProperty));
+                        } else {
+                            hasInvalidProperty = true;
+                        }
+                        break;
+                }
+            }
+
+            if (hasInvalidProperty || orders.isEmpty()) {
+                finalSort = Sort.by(Sort.Direction.DESC, "createdAt");
+            } else {
+                finalSort = Sort.by(orders);
+            }
+        }
+
+        return PageRequest.of(pageable.getPageNumber(), size, finalSort);
     }
 }
