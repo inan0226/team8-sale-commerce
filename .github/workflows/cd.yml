@@ -3,8 +3,9 @@ name: CD
 on:
   push:
     branches:
-      - main
       - develop
+      - main
+      - master
     tags:
       - 'v*'
   workflow_dispatch:
