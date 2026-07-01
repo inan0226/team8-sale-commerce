@@ -61,6 +61,9 @@ tasks.register('integrationTest', Test) {
     description = 'Runs integration tests that require external dependencies such as Docker/Testcontainers.'
     group = 'verification'
 
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+
     useJUnitPlatform {
         includeTags 'integration'
     }
