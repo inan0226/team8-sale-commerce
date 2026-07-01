@@ -1,7 +1,6 @@
 package com.example.team8salecommerce.domain.refund.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -46,6 +45,8 @@ class RefundQueryServiceTest {
 		Long orderId = 100L;
 		Long paymentId = 200L;
 		Long refundAmount = 7000L;
+		LocalDateTime requestedAt = LocalDateTime.of(2026, 6, 29, 12, 0);
+		LocalDateTime completedAt = LocalDateTime.of(2026, 6, 29, 12, 10);
 
 		// 환불 상세 조회에 필요한 컬럼만 담은 조회 전용 객체를 준비한다.
 		RefundDetailQuery refundDetail = new RefundDetailQuery(
@@ -54,8 +55,8 @@ class RefundQueryServiceTest {
 			paymentId,
 			refundAmount,
 			RefundStatus.REFUND_REQUEST,
-			LocalDateTime.now(),
-			null
+			requestedAt,
+			completedAt
 		);
 
 		// 엔티티 전체 조회가 아니라 DTO 직접 조회 메서드가 호출되도록 설정한다.
@@ -71,6 +72,12 @@ class RefundQueryServiceTest {
 		assertEquals(paymentId, response.paymentId());
 		assertEquals(refundAmount, response.refundAmount());
 		assertEquals("REFUND_REQUEST", response.refundStatus());
+		assertEquals(requestedAt, response.requestedAt());
+		assertEquals(completedAt, response.completedAt());
+
+		// 환불 상세 조회에서는 재고 복구 결과 필드를 내려주지 않으므로 null을 검증한다.
+		assertNull(response.restoredEventStock());
+		assertNull(response.remainingEventStock());
 
 		verify(refundRepository).findDetailByIdAndMemberId(refundId, memberId);
 	}
