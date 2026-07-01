@@ -6,6 +6,7 @@ import com.example.team8salecommerce.domain.category.entity.Category;
 import com.example.team8salecommerce.domain.order.repository.OrderProductRepository;
 import com.example.team8salecommerce.domain.product.entity.Product;
 import com.example.team8salecommerce.global.config.JpaAuditingConfig;
+import com.example.team8salecommerce.global.config.QueryDslConfig;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 @DataJpaTest
 @ActiveProfiles("test")
-@Import(JpaAuditingConfig.class)
+@Import({JpaAuditingConfig.class, QueryDslConfig.class})
 class OrderProductRepositoryTest {
 
 	@Autowired

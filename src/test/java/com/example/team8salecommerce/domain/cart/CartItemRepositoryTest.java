@@ -9,6 +9,7 @@ import com.example.team8salecommerce.domain.category.entity.Category;
 import com.example.team8salecommerce.domain.member.entity.Member;
 import com.example.team8salecommerce.domain.product.entity.Product;
 import com.example.team8salecommerce.global.config.JpaAuditingConfig;
+import com.example.team8salecommerce.global.config.QueryDslConfig;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,7 +22,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 @DataJpaTest
 @ActiveProfiles("test")
-@Import(JpaAuditingConfig.class)
+@Import({JpaAuditingConfig.class, QueryDslConfig.class})
 class CartItemRepositoryTest {
 
 	@Autowired

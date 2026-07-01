@@ -18,6 +18,7 @@ import com.example.team8salecommerce.domain.order.repository.OrderRepository;
 import com.example.team8salecommerce.domain.order.service.OrderService;
 import com.example.team8salecommerce.domain.product.entity.Product;
 import com.example.team8salecommerce.global.config.JpaAuditingConfig;
+import com.example.team8salecommerce.global.config.QueryDslConfig;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
 import java.util.List;
@@ -33,7 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @DataJpaTest
-@Import({OrderService.class, JpaAuditingConfig.class})
+@Import({OrderService.class, JpaAuditingConfig.class, QueryDslConfig.class})
 @ActiveProfiles("test")
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class OrderServiceTransactionTest {
