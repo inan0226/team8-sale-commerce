@@ -4,11 +4,14 @@ import com.example.team8salecommerce.domain.auth.dto.LoginRequest;
 import com.example.team8salecommerce.domain.auth.dto.LoginResponse;
 import com.example.team8salecommerce.domain.auth.dto.SignupRequest;
 import com.example.team8salecommerce.domain.auth.dto.SignupResponse;
+import com.example.team8salecommerce.domain.auth.dto.TokenRefreshResponse;
 import com.example.team8salecommerce.domain.member.entity.Member;
 import com.example.team8salecommerce.domain.member.repository.MemberRepository;
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
+import com.example.team8salecommerce.global.security.AuthMember;
 import com.example.team8salecommerce.global.security.JwtTokenProvider;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -41,8 +44,7 @@ public class AuthService {
      * 이렇게 저장해야 DB가 노출되어도 실제 비밀번호를 바로 알 수 없습니다.</p>
      */
     public SignupResponse signup(SignupRequest request) {
-        validateDuplicateEmail(request.email());
-        validateDuplicateNickname(request.nickname());
+        validateDuplicateMember(request);
 
         Member member = Member.create(
                 request.email(),
@@ -59,28 +61,50 @@ public class AuthService {
      * <p>Access Token은 API 인증에 사용하고, Refresh Token은 Access Token을 다시 발급받기 위한 용도입니다.
      * 이 프로젝트에서는 Refresh Token을 Redis에 저장해 서버가 유효한 Refresh Token인지 확인할 수 있게 합니다.</p>
      */
-    public LoginResponse login(LoginRequest request) {
+    public LoginResult login(LoginRequest request) {
         Member member = memberRepository.findByEmail(request.email())
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
         validatePassword(request.password(), member.getPassword());
 
-        String accessToken = jwtTokenProvider.createAccessToken(member);
-        String refreshToken = jwtTokenProvider.createRefreshToken(member);
-        refreshTokenService.saveRefreshToken(
-                member.getId(),
+        AuthMember authMember = AuthMember.from(member);
+        String accessToken = jwtTokenProvider.createAccessToken(authMember);
+        String refreshToken = jwtTokenProvider.createRefreshToken(authMember);
+        refreshTokenService.saveLoginSession(
+                authMember,
                 refreshToken,
                 jwtTokenProvider.getRefreshTokenExpirationMillis()
         );
 
-        return new LoginResponse(
+        LoginResponse response = new LoginResponse(
                 member.getId(),
                 member.getEmail(),
                 member.getNickname(),
                 member.getRole().name(),
                 accessToken,
-                refreshToken,
                 "Bearer"
+        );
+
+        return new LoginResult(response, refreshToken, jwtTokenProvider.getRefreshTokenExpirationMillis());
+    }
+
+    public TokenRefreshResult refreshAccessToken(String refreshToken) {
+        JwtTokenProvider.TokenClaims claims = jwtTokenProvider.parseRefreshToken(refreshToken);
+        long refreshTokenExpirationMillis = jwtTokenProvider.getRefreshTokenExpirationMillis();
+        AuthMember tokenMember = new AuthMember(claims.memberId(), claims.email(), claims.role());
+        String rotatedRefreshToken = jwtTokenProvider.createRefreshToken(tokenMember);
+        AuthMember authMember = refreshTokenService.rotateRefreshToken(
+                claims.memberId(),
+                refreshToken,
+                rotatedRefreshToken,
+                refreshTokenExpirationMillis
+        );
+        String accessToken = jwtTokenProvider.createAccessToken(authMember);
+
+        return new TokenRefreshResult(
+                new TokenRefreshResponse(accessToken, "Bearer"),
+                rotatedRefreshToken,
+                refreshTokenExpirationMillis
         );
     }
 
@@ -91,31 +115,65 @@ public class AuthService {
      * 그래서 Access Token의 남은 만료 시간만큼 blacklist에 등록해 재사용을 막고,
      * 회원의 Refresh Token도 삭제합니다.</p>
      */
-    public void logout(String accessToken) {
-        jwtTokenProvider.validateToken(accessToken);
-        Long memberId = jwtTokenProvider.getMemberId(accessToken);
-        long remainingMillis = jwtTokenProvider.getRemainingExpirationMillis(accessToken);
+    public void logout(Optional<String> accessToken, Optional<String> refreshToken) {
+        if (accessToken.isEmpty() && refreshToken.isEmpty()) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED);
+        }
 
-        refreshTokenService.blacklistAccessToken(accessToken, remainingMillis);
-        refreshTokenService.deleteRefreshToken(memberId);
-    }
+        CustomException accessTokenFailure = null;
+        Long memberId = null;
 
-    /**
-     * 같은 이메일로 두 번 가입하는 것을 막습니다.
-     */
-    private void validateDuplicateEmail(String email) {
-        if (memberRepository.existsByEmail(email)) {
-            throw new CustomException(ErrorCode.DUPLICATED_EMAIL);
+        if (accessToken.isPresent()) {
+            try {
+                JwtTokenProvider.TokenClaims claims = jwtTokenProvider.parseAccessToken(accessToken.get());
+                long remainingMillis = claims.expiresAtMillis() - System.currentTimeMillis();
+
+                refreshTokenService.blacklistAccessToken(accessToken.get(), remainingMillis);
+                memberId = claims.memberId();
+            } catch (CustomException exception) {
+                accessTokenFailure = exception;
+            }
+        }
+
+        Long refreshTokenMemberId = refreshToken
+                .flatMap(this::deleteRefreshTokenByCookie)
+                .orElse(null);
+
+        if (memberId != null && refreshTokenMemberId == null) {
+            refreshTokenService.deleteRefreshToken(memberId);
+        }
+
+        if (accessTokenFailure != null
+                && accessTokenFailure.getErrorCode() != ErrorCode.EXPIRED_TOKEN
+                && refreshTokenMemberId == null) {
+            throw accessTokenFailure;
         }
     }
 
-    /**
-     * 같은 닉네임으로 두 번 가입하는 것을 막습니다.
-     */
-    private void validateDuplicateNickname(String nickname) {
-        if (memberRepository.existsByNickname(nickname)) {
-            throw new CustomException(ErrorCode.DUPLICATED_NICKNAME);
+    private Optional<Long> deleteRefreshTokenByCookie(String refreshToken) {
+        try {
+            JwtTokenProvider.TokenClaims claims = jwtTokenProvider.parseRefreshToken(refreshToken);
+            refreshTokenService.deleteRefreshToken(claims.memberId());
+            return Optional.of(claims.memberId());
+        } catch (CustomException exception) {
+            if (exception.getErrorCode() == ErrorCode.EXPIRED_TOKEN
+                    || exception.getErrorCode() == ErrorCode.INVALID_TOKEN) {
+                return Optional.empty();
+            }
+
+            throw exception;
         }
+    }
+
+    private void validateDuplicateMember(SignupRequest request) {
+        memberRepository.findByEmailOrNickname(request.email(), request.nickname())
+                .ifPresent(member -> {
+                    if (member.getEmail().equals(request.email())) {
+                        throw new CustomException(ErrorCode.DUPLICATED_EMAIL);
+                    }
+
+                    throw new CustomException(ErrorCode.DUPLICATED_NICKNAME);
+                });
     }
 
     /**

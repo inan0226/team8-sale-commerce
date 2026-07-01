@@ -58,7 +58,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         // 회원가입과 로그인은 토큰이 없는 사용자가 호출해야 하므로 공개합니다.
-                        .requestMatchers("/auth/signup", "/auth/login").permitAll()
+                        .requestMatchers("/auth/signup", "/auth/login", "/auth/refresh", "/auth/logout").permitAll()
                         // WebSocket 연결(handshake)은 허용하고, 실제 STOMP 인증은 WebSocketJwtChannelInterceptor에서 처리합니다.
                         .requestMatchers("/ws/chat", "/ws/chat/**").permitAll()
                         // 상품/카테고리 조회처럼 누구나 볼 수 있는 조회 API는 공개합니다.

@@ -11,7 +11,6 @@ package com.example.team8salecommerce.domain.auth.dto;
  * @param nickname 로그인한 회원 닉네임
  * @param role 로그인한 회원 역할
  * @param accessToken API 인증에 사용할 토큰
- * @param refreshToken Access Token 재발급에 사용할 토큰
  * @param tokenType Authorization 헤더에 붙일 토큰 타입
  */
 public record LoginResponse(
@@ -20,7 +19,6 @@ public record LoginResponse(
         String nickname,
         String role,
         String accessToken,
-        String refreshToken,
         String tokenType
 ) {
 }

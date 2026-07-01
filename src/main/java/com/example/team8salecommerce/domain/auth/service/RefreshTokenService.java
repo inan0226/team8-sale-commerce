@@ -2,7 +2,10 @@ package com.example.team8salecommerce.domain.auth.service;
 
 import com.example.team8salecommerce.global.exception.CustomException;
 import com.example.team8salecommerce.global.exception.ErrorCode;
+import com.example.team8salecommerce.domain.member.entity.Role;
+import com.example.team8salecommerce.global.security.AuthMember;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
@@ -10,14 +13,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
 /**
- * Refresh Token 저장과 Access Token blacklist 처리를 담당하는 서비스입니다.
+ * 인증 토큰 세션을 Redis에 저장하고 조회하는 서비스입니다.
  *
- * <p>JWT는 서버 세션을 쓰지 않기 때문에, 한 번 발급된 Access Token은 만료 전까지 기본적으로 유효합니다.
- * 로그아웃한 토큰을 다시 못 쓰게 하려면 "이 토큰은 로그아웃됨"이라는 기록을 별도로 저장해야 합니다.
- * 이 프로젝트에서는 그 기록을 Redis에 저장합니다.</p>
+ * <p>Access Token 인증 시 매번 DB를 조회하지 않도록 로그인 시점의 인증 스냅샷을 Redis에 저장합니다.
+ * 필터와 WebSocket 인터셉터는 토큰 검증 후 Redis에서 blacklist 여부와 인증 스냅샷을 한 번에 조회합니다.</p>
+ *
+ * <p>회원 권한 변경, 정지, 탈퇴처럼 로그인 세션의 권한 정보가 더 이상 유효하지 않은 기능을 추가할 때는
+ * {@link #deleteRefreshToken(Long)}을 호출해 refresh token과 인증 스냅샷을 함께 무효화해야 합니다.</p>
  *
  * <p>테스트나 로컬 환경에서 Redis가 필수가 아닌 설정일 때는 메모리 대체 저장소를 사용합니다.
  * 운영 환경에서는 Redis를 사용하는 것이 일반적입니다.</p>
@@ -29,27 +35,45 @@ public class RefreshTokenService {
 
     private static final String REFRESH_TOKEN_PREFIX = "auth:refresh:";
     private static final String BLACKLIST_PREFIX = "auth:blacklist:";
+    private static final String AUTH_MEMBER_PREFIX = "auth:member:";
+    private static final RedisScript<String> ROTATE_REFRESH_TOKEN_SCRIPT = RedisScript.of("""
+            local storedRefreshToken = redis.call('GET', KEYS[1])
+            if not storedRefreshToken or storedRefreshToken ~= ARGV[1] then
+                return nil
+            end
+
+            local authMember = redis.call('GET', KEYS[2])
+            if not authMember then
+                return nil
+            end
+
+            redis.call('SET', KEYS[1], ARGV[2], 'PX', ARGV[3])
+            redis.call('PEXPIRE', KEYS[2], ARGV[3])
+
+            return authMember
+            """, String.class);
 
     private final StringRedisTemplate stringRedisTemplate;
     private final Map<Long, String> fallbackRefreshTokens = new ConcurrentHashMap<>();
     private final Map<String, Long> fallbackBlacklistedAccessTokens = new ConcurrentHashMap<>();
+    private final Map<Long, AuthMember> fallbackAuthMembers = new ConcurrentHashMap<>();
+    private final Object fallbackSessionLock = new Object();
 
     @Value("${auth.redis-required:true}")
     private boolean redisRequired;
 
-    /**
-     * 로그인 성공 시 발급한 Refresh Token을 회원 ID 기준으로 저장합니다.
-     *
-     * <p>Refresh Token은 Access Token이 만료되었을 때 새 Access Token을 발급받는 데 사용됩니다.
-     * 만료 시간이 지나면 Redis에서도 자동으로 사라지도록 TTL을 함께 설정합니다.</p>
-     */
-    public void saveRefreshToken(Long memberId, String refreshToken, long expirationMillis) {
+    public void saveLoginSession(AuthMember authMember, String refreshToken, long expirationMillis) {
+        Duration expiration = Duration.ofMillis(expirationMillis);
+
         try {
             stringRedisTemplate.opsForValue()
-                    .set(REFRESH_TOKEN_PREFIX + memberId, refreshToken, Duration.ofMillis(expirationMillis));
+                    .set(REFRESH_TOKEN_PREFIX + authMember.memberId(), refreshToken, expiration);
+            stringRedisTemplate.opsForValue()
+                    .set(AUTH_MEMBER_PREFIX + authMember.memberId(), serializeAuthMember(authMember), expiration);
         } catch (RedisConnectionFailureException exception) {
-            handleRedisFailure("리프레시 토큰 저장", exception);
-            fallbackRefreshTokens.put(memberId, refreshToken);
+            handleRedisFailure("로그인 인증 세션 저장", exception);
+            fallbackRefreshTokens.put(authMember.memberId(), refreshToken);
+            fallbackAuthMembers.put(authMember.memberId(), authMember);
         }
     }
 
@@ -61,11 +85,13 @@ public class RefreshTokenService {
     public void deleteRefreshToken(Long memberId) {
         try {
             stringRedisTemplate.delete(REFRESH_TOKEN_PREFIX + memberId);
+            stringRedisTemplate.delete(AUTH_MEMBER_PREFIX + memberId);
         } catch (RedisConnectionFailureException exception) {
             handleRedisFailure("리프레시 토큰 삭제", exception);
         }
 
         fallbackRefreshTokens.remove(memberId);
+        fallbackAuthMembers.remove(memberId);
     }
 
     /**
@@ -88,21 +114,77 @@ public class RefreshTokenService {
         }
     }
 
-    /**
-     * Access Token이 로그아웃 처리된 토큰인지 확인합니다.
-     *
-     * <p>{@link com.example.team8salecommerce.global.security.JwtAuthenticationFilter}가 요청마다 이 메서드를 호출해,
-     * blacklist에 있는 토큰이면 인증을 거부합니다.</p>
-     */
-    public boolean isBlacklisted(String accessToken) {
+    public AuthMember authenticateAccessToken(String accessToken, Long memberId) {
         removeExpiredFallbackBlacklist(accessToken);
 
         try {
-            return Boolean.TRUE.equals(stringRedisTemplate.hasKey(BLACKLIST_PREFIX + accessToken))
-                    || fallbackBlacklistedAccessTokens.containsKey(accessToken);
+            List<String> values = stringRedisTemplate.opsForValue()
+                    .multiGet(List.of(BLACKLIST_PREFIX + accessToken, AUTH_MEMBER_PREFIX + memberId));
+
+            if (values != null && values.get(0) != null) {
+                throw new CustomException(ErrorCode.INVALID_TOKEN);
+            }
+
+            String authMemberValue = values == null ? null : values.get(1);
+            if (authMemberValue == null) {
+                throw new CustomException(ErrorCode.INVALID_TOKEN);
+            }
+
+            return deserializeAuthMember(authMemberValue);
         } catch (RedisConnectionFailureException exception) {
-            handleRedisFailure("액세스 토큰 블랙리스트 조회", exception);
-            return fallbackBlacklistedAccessTokens.containsKey(accessToken);
+            handleRedisFailure("액세스 토큰 인증 세션 조회", exception);
+
+            if (fallbackBlacklistedAccessTokens.containsKey(accessToken)) {
+                throw new CustomException(ErrorCode.INVALID_TOKEN);
+            }
+
+            AuthMember authMember = fallbackAuthMembers.get(memberId);
+            if (authMember == null) {
+                throw new CustomException(ErrorCode.INVALID_TOKEN);
+            }
+
+            return authMember;
+        }
+    }
+
+    public AuthMember rotateRefreshToken(
+            Long memberId,
+            String currentRefreshToken,
+            String rotatedRefreshToken,
+            long expirationMillis
+    ) {
+        try {
+            String authMemberValue = stringRedisTemplate.execute(
+                    ROTATE_REFRESH_TOKEN_SCRIPT,
+                    List.of(REFRESH_TOKEN_PREFIX + memberId, AUTH_MEMBER_PREFIX + memberId),
+                    currentRefreshToken,
+                    rotatedRefreshToken,
+                    String.valueOf(expirationMillis)
+            );
+            if (authMemberValue == null) {
+                throw new CustomException(ErrorCode.INVALID_TOKEN);
+            }
+
+            return deserializeAuthMember(authMemberValue);
+        } catch (RedisConnectionFailureException exception) {
+            handleRedisFailure("리프레시 토큰 원자적 교체", exception);
+
+            synchronized (fallbackSessionLock) {
+                String storedRefreshToken = fallbackRefreshTokens.get(memberId);
+                if (!currentRefreshToken.equals(storedRefreshToken)) {
+                    throw new CustomException(ErrorCode.INVALID_TOKEN);
+                }
+
+                AuthMember authMember = fallbackAuthMembers.get(memberId);
+                if (authMember == null) {
+                    throw new CustomException(ErrorCode.INVALID_TOKEN);
+                }
+
+                fallbackRefreshTokens.put(memberId, rotatedRefreshToken);
+                fallbackAuthMembers.put(memberId, authMember);
+
+                return authMember;
+            }
         }
     }
 
@@ -124,6 +206,27 @@ public class RefreshTokenService {
         Long expirationTime = fallbackBlacklistedAccessTokens.get(accessToken);
         if (expirationTime != null && expirationTime <= System.currentTimeMillis()) {
             fallbackBlacklistedAccessTokens.remove(accessToken);
+        }
+    }
+
+    private String serializeAuthMember(AuthMember authMember) {
+        return authMember.memberId() + "\n" + authMember.email() + "\n" + authMember.role().name();
+    }
+
+    private AuthMember deserializeAuthMember(String value) {
+        String[] parts = value.split("\n", 3);
+        if (parts.length != 3) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
+        }
+
+        try {
+            return new AuthMember(
+                    Long.parseLong(parts[0]),
+                    parts[1],
+                    Role.valueOf(parts[2])
+            );
+        } catch (IllegalArgumentException exception) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
     }
 }
