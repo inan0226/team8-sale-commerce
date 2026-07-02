@@ -45,6 +45,7 @@ class CartItemRepositoryTest {
 		CartItem alreadyDeleted = persistCartItem(targetCart, persistProduct(category, "상품3"), true);
 		CartItem otherCartItem = persistCartItem(otherCart, persistProduct(category, "상품4"), false);
 		LocalDateTime deletedAt = LocalDateTime.of(2026, 7, 1, 12, 0);
+
 		flushAndClear();
 
 		int affectedRows = cartItemRepository.softDeleteActiveByIds(
@@ -52,6 +53,7 @@ class CartItemRepositoryTest {
 			List.of(first.getId(), second.getId(), alreadyDeleted.getId(), otherCartItem.getId()),
 			deletedAt
 		);
+
 		entityManager.clear();
 
 		assertThat(affectedRows).isEqualTo(2);
@@ -67,8 +69,11 @@ class CartItemRepositoryTest {
 		Category category = persistCategory();
 		Cart cart = persistCart("member@test.com", "member");
 		CartItem cartItem = persistCartItem(cart, persistProduct(category, "상품"), true);
+
 		flushAndClear();
+
 		LocalDateTime originalDeletedAt = findCartItem(cartItem.getId()).getDeletedAt();
+
 		entityManager.clear();
 
 		int affectedRows = cartItemRepository.softDeleteActiveByIds(
@@ -76,6 +81,7 @@ class CartItemRepositoryTest {
 			List.of(cartItem.getId()),
 			LocalDateTime.of(2026, 7, 1, 13, 0)
 		);
+
 		entityManager.clear();
 
 		assertThat(affectedRows).isZero();
@@ -91,8 +97,10 @@ class CartItemRepositoryTest {
 	private Cart persistCart(String email, String nickname) {
 		Member member = Member.create(email, "password", nickname);
 		entityManager.persist(member);
+
 		Cart cart = Cart.create(member);
 		entityManager.persist(cart);
+
 		return cart;
 	}
 
@@ -104,9 +112,11 @@ class CartItemRepositoryTest {
 
 	private CartItem persistCartItem(Cart cart, Product product, boolean deleted) {
 		CartItem cartItem = CartItem.create(cart, product, 1);
+
 		if (deleted) {
 			cartItem.delete();
 		}
+
 		entityManager.persist(cartItem);
 		return cartItem;
 	}

@@ -32,9 +32,11 @@ class OrderProductRepositoryTest {
 	@DisplayName("재고가 충분한 활성 상품의 재고를 차감한다")
 	void decreaseStockSuccess() {
 		Product product = persistProduct(10, false);
+
 		flushAndClear();
 
 		int affectedRows = orderProductRepository.decreaseStock(product.getId(), 3);
+
 		entityManager.clear();
 
 		assertThat(affectedRows).isEqualTo(1);
@@ -45,9 +47,11 @@ class OrderProductRepositoryTest {
 	@DisplayName("재고가 부족하면 재고를 차감하지 않는다")
 	void decreaseStockFailsWhenStockIsInsufficient() {
 		Product product = persistProduct(2, false);
+
 		flushAndClear();
 
 		int affectedRows = orderProductRepository.decreaseStock(product.getId(), 3);
+
 		entityManager.clear();
 
 		assertThat(affectedRows).isZero();
@@ -58,9 +62,11 @@ class OrderProductRepositoryTest {
 	@DisplayName("삭제된 상품은 재고를 차감하지 않는다")
 	void decreaseStockFailsWhenProductIsDeleted() {
 		Product product = persistProduct(10, true);
+
 		flushAndClear();
 
 		int affectedRows = orderProductRepository.decreaseStock(product.getId(), 3);
+
 		entityManager.clear();
 
 		assertThat(affectedRows).isZero();
@@ -71,9 +77,11 @@ class OrderProductRepositoryTest {
 	@DisplayName("주문 취소 수량만큼 상품 재고를 복구한다")
 	void restoreStockSuccess() {
 		Product product = persistProduct(7, false);
+
 		flushAndClear();
 
 		int affectedRows = orderProductRepository.restoreStock(product.getId(), 3);
+
 		entityManager.clear();
 
 		assertThat(affectedRows).isEqualTo(1);
@@ -95,7 +103,9 @@ class OrderProductRepositoryTest {
 		Product product = deleted
 			? Product.createDeleted("상품", "브랜드", 1_000L, stock, "image", "설명", category)
 			: Product.create("상품", "브랜드", 1_000L, stock, "image", "설명", category);
+
 		entityManager.persist(product);
+
 		return product;
 	}
 
